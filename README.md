@@ -4,6 +4,26 @@
 
 独立的 **`onsite-audit-content`** skill，检查 **17.1–20.2**。基于你已跑通的 Multica 提取逻辑整理，与 HTTPS、robots、sitemap 系列共用 SF session、saved crawl、配置和运行目录。当前版本 **1.0.2**。
 
+## 高层工作流
+
+```mermaid
+flowchart TD
+    A["开始 Content Audit<br/>网站、现有数据与共用配置"] --> B{"已有适用的 SF 数据？"}
+    B -- "已有 CSV 导出" --> F["复用／导出所需 CSV<br/>记录来源、范围和证据缺口"]
+    B -- "已有 session／saved crawl" --> C["复用 session 或打开 saved crawl<br/>保留当前会话，不重新爬取"]
+    C --> F
+    B -- "需要新 crawl，且已获授权" --> D["调用现有 sf-shared-config<br/>准备 profile 与交接流程"]
+    D --> E["用户确认网站／sitemap<br/>手动 Start，完成后保存／交接"]
+    E --> F
+    F --> G["Content skill 校验数据并审核<br/>17 标题 · 18 描述 · 19 H1 · 20 图片"]
+    G --> H["十二项判定<br/>√ 无问题 · X 有问题 · Human Check 证据不足"]
+    H --> I["findings.json：全部十二项与问题行<br/>manifest.json：来源、阈值和证据记录"]
+    I --> J["生成 Excel<br/>Checklist 始终包含十二项<br/>只为 X 创建对应明细 tab"]
+    J --> K["读回验证与版面检查<br/>交付报告，保留原始证据"]
+```
+
+共用配置、SF session、导出缓存和累计预算贯穿整个流程。全通过时 Excel 只有 Checklist；证据不足的项目留在 Checklist 并写明补查动作。Page Titles:All 缺失、无效或没有数据时停止本次报告生成。Python 处理已取得的 CSV；shared config 的准备和交接由 agent 按实际可用工具执行。
+
 ## 审核范围
 
 | Item | 检查 | 原生 SF 数据 |
