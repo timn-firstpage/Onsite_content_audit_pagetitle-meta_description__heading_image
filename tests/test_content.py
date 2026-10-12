@@ -149,13 +149,34 @@ class ContentTests(unittest.TestCase):
         import openpyxl
         wb = openpyxl.load_workbook(output)
         self.addCleanup(wb.close)
-        self.assertEqual(len(wb.sheetnames), 13)
+        self.assertEqual(wb.sheetnames, ['Checklist', '17.2 Page titles - Duplicate'])
         self.assertEqual(wb.sheetnames[0], 'Checklist')
         self.assertEqual(wb['17.2 Page titles - Duplicate']['B2'].value, '=1+1')
         self.assertEqual(wb['17.2 Page titles - Duplicate']['B2'].data_type, 's')
-        self.assertEqual(wb['20.2 Image - Oversize'].max_row, 1)
+        self.assertNotIn('20.2 Image - Oversize', wb.sheetnames)
         with self.assertRaises(FileExistsError):
             report.build_report(data, self.path / 'reports')
+
+    def test_report_clean_and_unknown_checks_stay_on_checklist(self):
+        self.full_exports()
+        import report
+        import openpyxl
+        for unknown in (False, True):
+            if unknown:
+                (self.path / 'h1_missing.csv').unlink()
+            data = self.audit()
+            data.update(site_name='Example', site_url='https://example.com/', audit_date='2026-10-12')
+            output = report.build_report(data, self.path / str(unknown))
+            with output.open('rb') as source:
+                wb = openpyxl.load_workbook(source)
+                try:
+                    self.assertEqual(wb.sheetnames, ['Checklist'])
+                    self.assertEqual(wb['Checklist'].max_row, 13)
+                    self.assertEqual(len(data['checks']), 12)
+                    self.assertTrue(all(not c['rows'] for c in data['checks']))
+                    self.assertEqual(wb['Checklist']['C9'].value, 'Human Check' if unknown else '√')
+                finally:
+                    wb.close()
 
     def cli(self, config, run='run'):
         script = ROOT / 'scripts' / 'onsite_checklist.py'

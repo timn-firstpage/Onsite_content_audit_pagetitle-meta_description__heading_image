@@ -63,7 +63,8 @@ def build_report(data, output_dir):
     checks = sorted(data['checks'], key=lambda c: tuple(map(int, c['id'].split('.'))))
     expected['Checklist'] = [CHECK_HEADERS] + [[c['id'], c['item_name'], c['result'], c['finding'], c['action']] for c in checks]
     for c in checks:
-        expected[c['sheet']] = [c['headers']] + [r + [''] * (len(c['headers']) - len(r)) for r in c['rows']]
+        if c['result'] == 'X':
+            expected[c['sheet']] = [c['headers']] + [r + [''] * (len(c['headers']) - len(r)) for r in c['rows']]
     try:
         for sheet, rows in expected.items():
             ws = wb.create_sheet(sheet)

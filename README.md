@@ -2,7 +2,7 @@
 
 <p align="center"><img src="assets/onsite-audit-cover.png" alt="Onsite audit cover showing HTTPS security, website inspection, crawl connections, hostname redirects, and an audit report" width="640"></p>
 
-独立的 **`onsite-audit-content`** skill，检查 **17.1–20.2**。基于你已跑通的 Multica 提取逻辑整理，与 HTTPS、robots、sitemap 系列共用 SF session、saved crawl、配置和运行目录。当前版本 **1.0.0**。
+独立的 **`onsite-audit-content`** skill，检查 **17.1–20.2**。基于你已跑通的 Multica 提取逻辑整理，与 HTTPS、robots、sitemap 系列共用 SF session、saved crawl、配置和运行目录。当前版本 **1.0.1**。
 
 ## 审核范围
 
@@ -89,13 +89,13 @@ target 清单通过 config 的 content.target_urls、content.target_urls_file �
 
 `<shared-run>/content/`：
 
-- `{site name}_content_audit_{YYYY-MM-DD}.xlsx`：Checklist + 12 个问题明细 tab。
+- `{site name}_content_audit_{YYYY-MM-DD}.xlsx`：Checklist + 仅结果为 X 的问题明细 tab（最多 12 个）。
 - findings.json：十二项结果与全部确认问题行，供总流程复用。
 - manifest.json：来源、哈希、阈值、排除、计数和缺口。
 - raw/：可选完整 CSV 归档，默认开启。
 - run-status.json：XLSX 读回验证成功后写 complete。
 
-Checklist：Item No. / Item Name / Initial Check / Findings / Instruction。结果 **√ / X / Human Check**；有确认问题且同时缺证据仍 X，明确缺口。明细只列确认问题，无问题保留表头；第 1 行表头、第 2 行数据。[完整输出契约](references/output-contract.md)
+Checklist：Item No. / Item Name / Initial Check / Findings / Instruction。结果 **√ / X / Human Check**；有确认问题且同时缺证据仍 X，明确缺口。Checklist 始终保留十二项；仅 X 创建对应问题明细 tab，√ 和 Human Check 不创建空白明细 tab，全通过时只有 Checklist。明细沿用原来的 JSON headers/rows 和各项列结构，第 1 行表头、第 2 行数据。findings.json 仍保留全部十二项，空问题数组及证据缺口不删除。[完整输出契约](references/output-contract.md)
 
 不覆盖旧文件；同日更新使用新的 run 目录。日期按用户时区或明确 audit_date。所有客户资料在 ignored runs/，不要提交 GitHub。英文原始 checklist 问题保留，Findings/Instruction 支持 zh/en。
 

@@ -2,7 +2,7 @@
 
 File: `{site name}_content_audit_{YYYY-MM-DD}.xlsx`. Name from supplied site.name/--site-name, otherwise hostname without www. Date from --date/output.audit_date or output.timezone; never silently use another host's local date. Repeated audit uses a new run/content directory, never overwrites.
 
-Thirteen worksheets: Checklist first, followed by the twelve detail tabs in numeric order. Titles/capitalization match the owner's table exactly. Headers are **row 1, data from row 2**, aligning with the standalone onsite series rather than the old whole-onsite template's row-3 headers.
+One to thirteen worksheets: Checklist first, followed only by detail tabs for checks with result X, in numeric order. √ and Human Check do not create detail tabs. No X means Checklist only. All twelve checks remain in Checklist and findings.json. Titles/capitalization match the owner's table exactly. Headers are **row 1, data from row 2**, aligning with the standalone onsite series rather than the old whole-onsite template's row-3 headers.
 
 Checklist: `Item No. | Item Name | Initial Check | Findings | Instruction`. All twelve original English questions appear once. √/X/Human Check, no Yes/No, Coverage or extra history columns. Findings is the short observed conclusion; Instruction is the person's next action, `—` if none. Known issues with gaps remain X and disclose the incomplete part. Pure gaps stay on Checklist, not issue tabs. H1 presence and decorative-image caveats are explicit.
 
@@ -23,7 +23,7 @@ Detail schema:
 | 20.1 Image - Alt Text Missing | Source, Destination, Screenshots (If have) |
 | 20.2 Image - Oversize | Source, Destination, Size (Bytes) |
 
-New Title/Revised Title/Remarks/Instruction/screenshot fields are blank for human work; do not fabricate replacement copy or screenshots. This generator doesn't embed images or carry old annotations. Clean/unknown-only sheets retain headers. All problem rows are preserved, duplicates grouped and widths/sizes sorted descending. Image rows are references; report unique asset/page counts separately. Store any supplied formula-looking text as literal strings; no website text may execute Excel formulas.
+New Title/Revised Title/Remarks/Instruction/screenshot fields are blank for human work; do not fabricate replacement copy or screenshots. This generator doesn't embed images or carry old annotations. Clean/unknown-only sheets are omitted. Existing findings.json keys and detail headers/rows are unchanged; an omitted sheet still has its check metadata, empty rows and any gaps in JSON. All problem rows are preserved, duplicates grouped and widths/sizes sorted descending. Image rows are references; report unique asset/page counts separately. Store any supplied formula-looking text as literal strings; no website text may execute Excel formulas.
 
 findings.json is machine-readable: schema_version, language, site_name, site_url, audit_date and checks. Each check contains id/item_name/sheet/headers/result/finding/action, rows/row_count, sources and gaps. Image checks also carry unique_assets and affected_pages. The renderer validates all twelve IDs, schema, counts and result/gap consistency, reopens XLSX and verifies every value and the absence of formulas.
 

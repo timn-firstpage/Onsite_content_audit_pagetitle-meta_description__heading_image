@@ -1,5 +1,10 @@
 # Changes
 
+## 1.0.1 — 2026-10-12
+
+- Create Excel detail tabs only for X checks; retain all twelve checks in Checklist and the existing findings.json schema.
+- Add the shared onsite cover and the twelve-item judgment matrix to README.
+
 ## 1.0.0 — 2026-10-12
 
 - Extract the working Multica content rules as the standalone onsite-audit-content module, scoped to 17.1–20.2.
