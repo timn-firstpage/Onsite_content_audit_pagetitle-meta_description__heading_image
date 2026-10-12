@@ -1,6 +1,7 @@
 import importlib.util
 import csv
 import json
+import os
 import sys
 import subprocess
 import tempfile
@@ -202,6 +203,28 @@ class ContentTests(unittest.TestCase):
         self.assertEqual(data['audit_date'], '2026-10-12')
         self.assertTrue((self.path / 'run' / 'content' / 'manifest.json').exists())
         self.assertNotEqual(self.cli(config).returncode, 0)
+
+    def test_cli_global_config_handover_and_shared_usage_preserved(self):
+        self.full_exports()
+        config = self.config(extra={'checks': {'robots': True}, 'budget': {'max_mcp_calls': 7}})
+        original = config.read_bytes()
+        run = self.path / 'shared-run'
+        run.mkdir()
+        usage = run / 'usage.json'
+        usage.write_text('{"mcp_calls": 3}', encoding='utf-8')
+        handover = run / 'sf-handover.json'
+        handover.write_text(json.dumps({'site_url': 'https://example.com/', 'crawl': {'id': 'context-only'},
+                                       'gaps': ['Partial crawl']}), encoding='utf-8')
+        result = subprocess.run([sys.executable, str(ROOT / 'scripts' / 'onsite_checklist.py'), '--run-dir', str(run)],
+                                env={**os.environ, 'ONSITE_AUDIT_CONFIG': str(config)},
+                                capture_output=True, text=True, encoding='utf-8')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        manifest = json.loads((run / 'content' / 'manifest.json').read_text(encoding='utf-8'))
+        self.assertEqual(manifest['config_input']['selection'], 'environment')
+        self.assertEqual(manifest['shared_handover']['record']['gaps'], ['Partial crawl'])
+        self.assertNotEqual(manifest['source'].get('crawl_id'), 'context-only')
+        self.assertEqual(config.read_bytes(), original)
+        self.assertEqual(usage.read_text(), '{"mcp_calls": 3}')
 
     def test_cli_rejects_other_site_exports(self):
         self.full_exports()

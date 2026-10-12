@@ -29,4 +29,6 @@ findings.json is machine-readable: schema_version, language, site_name, site_url
 
 manifest.json stores export paths, states, hashes, headers/counts, thresholds, target exclusions, observed hosts, source metadata and local operation counts. Keep raw evidence ignored. Missing native-filter files, field errors and unknown sizes stay explicit in gaps; no synthetic clean CSVs. run-status.json says complete only after report read-back. Generation failure leaves evidence for troubleshooting and must not be reported as completed.
 
+manifest.config_input records the selected runtime JSON path/hash and explicit/environment/cli_only selection. manifest.shared_handover is null when absent, otherwise path/hash/record/note for the shared SF context; it does not certify crawl identity or coverage. These additive provenance fields leave findings.json unchanged.
+
 Render/inspect Checklist and representative detail tabs before customer delivery. Long values remain in raw exports and must not be shortened silently. The fixed workbook has wrapped cells, frozen headers and status fills. If unusually large text cannot fit a readable row, shorten reviewed narrative only or produce a separate view while retaining evidence; don't truncate source values.

@@ -2,7 +2,7 @@
 
 <p align="center"><img src="assets/onsite-audit-cover.png" alt="Onsite audit cover showing HTTPS security, website inspection, crawl connections, hostname redirects, and an audit report" width="640"></p>
 
-独立的 **`onsite-audit-content`** skill，检查 **17.1–20.2**。基于你已跑通的 Multica 提取逻辑整理，与 HTTPS、robots、sitemap 系列共用 SF session、saved crawl、配置和运行目录。当前版本 **1.0.1**。
+独立的 **`onsite-audit-content`** skill，检查 **17.1–20.2**。基于你已跑通的 Multica 提取逻辑整理，与 HTTPS、robots、sitemap 系列共用 SF session、saved crawl、配置和运行目录。当前版本 **1.0.2**。
 
 ## 审核范围
 
@@ -52,6 +52,8 @@
 - [Sitemap](https://github.com/timn-firstpage/Onsite_audit_sitemap_check) 负责 11.x；本模块不执行 canonical、HTTPS、robots、sitemap、分页和 PageSpeed。
 
 使用同一份 resolved config 的 `site/source/mcp/budget/cache/output`，添加 `checks.content` 和 `content`。同一个 SF 实例串行操作，适用导出只取一次、共用预算；已有 saved crawl 不重新加载配置、不自动重爬。[详细约定](references/shared-config.md)
+
+已提供 [配置衔接组件](references/config-component.md)：agent 调用现有 `sf-shared-config` 完成必要准备和交接，Python 的 `scripts/shared_config.py` 读取共用运行 JSON。优先 `--config`，未指定时使用可选 `ONSITE_AUDIT_CONFIG`；仅在内存补 content 默认值。共享 run 的 `sf-handover.json` 自动记录到 manifest，也可通过 `--sf-handover` 指定；它是来源记录，不是审核通过证明。原配置、交接文件和累计预算不修改。这个 shared skill 仓库中的 SF profile 与运行 JSON 是两种文件，不把 GitHub URL 当文件路径。
 
 本模块输出独立报告，不修改整份 onsite 模板。若将来合并 master workbook，由总流程一次性处理历史 D/E 列及各模块映射；本模块只提供十二项 findings。没有旧版 Begin/Review/template 问答或模板下载。
 

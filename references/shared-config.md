@@ -2,6 +2,8 @@
 
 Use the existing resolved config and run from the HTTPS/robots/sitemap coordinator. The same `site`, `source`, `mcp`, `budget`, `cache` and `output` fields are accepted. This module adds `checks.content` and `content` only; ignore sibling checks without changing them.
 
+The concrete [config component](config-component.md) uses the existing separately installed sf-shared-config skill for SF preparation/handover and scripts/shared_config.py for read-only runtime JSON adaptation. --config takes priority over optional ONSITE_AUDIT_CONFIG. Preserve the current shared run with --run-dir; its optional sf-handover.json is retained as unverified coordination context, not merged into source identity. Both inputs' paths/hashes appear in manifest, without writing global settings or usage.
+
 Read the installed [sf-shared-config](https://github.com/timn-firstpage/On-_site_SF_shared_config) SKILL.md when SF preparation is needed. It is a separate dependency, not copied or auto-installed here. Shared [saved-crawl entry](https://github.com/timn-firstpage/On-_site_SF_shared_config/blob/main/references/saved-crawl-entry.md) applies to this caller too:
 
 1. Explicitly supplied saved file/session wins over stale config. Use source.mode=saved_crawl and source.crawl_file, or the verified session crawl_id. `.seospiderconfig` is not a crawl.

@@ -1,5 +1,11 @@
 # Changes
 
+## 1.0.2 — 2026-10-12
+
+- Add a read-only shared configuration adapter with explicit config precedence and optional ONSITE_AUDIT_CONFIG.
+- Read shared SF handover as provenance, reject mismatched sites, and preserve original config/budgets.
+- Document composition with the existing separate sf-shared-config skill; include the adapter in portable packaging.
+
 ## 1.0.1 — 2026-10-12
 
 - Create Excel detail tabs only for X checks; retain all twelve checks in Checklist and the existing findings.json schema.

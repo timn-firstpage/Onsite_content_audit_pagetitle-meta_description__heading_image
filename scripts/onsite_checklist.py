@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from extract import audit
 from report import build_report
+from shared_config import load_config, read_handover
 
 
 def resolve(value, base):
@@ -38,8 +39,7 @@ def target_urls(path):
 
 
 def run(args):
-    base = args.config.resolve().parent if args.config else Path.cwd()
-    config = json.loads(args.config.read_text(encoding='utf-8-sig')) if args.config else {}
+    config, base, config_input = load_config(args.config)
     if config.get('checks', {}).get('content') is False:
         print('Content audit disabled by checks.content=false')
         return
@@ -109,6 +109,10 @@ def run(args):
         run_dir = root / (date.isoformat() + '-' + datetime.datetime.now(datetime.timezone.utc).strftime('%H%M%S-%f'))
     else:
         run_dir = resolve(run_value, base)
+    handover_value = getattr(args, 'sf_handover', None)
+    handover_path = resolve(handover_value, base) if handover_value else run_dir / 'sf-handover.json'
+    shared_handover = read_handover(handover_path, allowed) if handover_value or handover_path.exists() else None
+    data['manifest'].update(config_input=config_input, shared_handover=shared_handover)
     destination = run_dir / 'content'
     if destination.exists() and any(destination.iterdir()):
         raise FileExistsError(f'Content output exists: {destination}; choose a new run directory')
@@ -143,7 +147,8 @@ def main():
         sys.stdout.reconfigure(encoding='utf-8')
         sys.stderr.reconfigure(encoding='utf-8')
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--config', type=Path, help='Shared onsite JSON config')
+    parser.add_argument('--config', type=Path, help='Shared onsite JSON config; otherwise use ONSITE_AUDIT_CONFIG')
+    parser.add_argument('--sf-handover', type=Path, help='Shared SF context; defaults to sf-handover.json in the shared run')
     parser.add_argument('--exports-dir', type=Path, help='Native CSV exports; overrides config source')
     parser.add_argument('--site-url')
     parser.add_argument('--site-name')
