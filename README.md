@@ -1,5 +1,7 @@
 # Onsite Content Audit — Page Titles / Descriptions / H1 / Images
 
+<p align="center"><img src="assets/onsite-audit-cover.png" alt="Onsite audit cover showing HTTPS security, website inspection, crawl connections, hostname redirects, and an audit report" width="640"></p>
+
 独立的 **`onsite-audit-content`** skill，检查 **17.1–20.2**。基于你已跑通的 Multica 提取逻辑整理，与 HTTPS、robots、sitemap 系列共用 SF session、saved crawl、配置和运行目录。当前版本 **1.0.0**。
 
 ## 审核范围
@@ -20,6 +22,27 @@
 | 20.2 | 图片 >204800 bytes，包含外部 CDN | All Image Inlinks |
 
 17.1/18.1 先去当前 SF session 的原生 Missing filter 找出页面。只有已有任务/session 明确标识的 target 清单才排除；没有清单就检查所有 Missing 行，并注明未应用排除。不按缺失结果反推 target pages。装饰图可用空 Alt，需人工排除；行数、独立图片数、受影响页面数分开。
+
+## 判定矩阵（Judgment Matrix）
+
+下面描述当前脚本实际执行的规则，判断范围是所提供的 SF 导出样本。各项独立判断：**有确认问题行 → X；没有确认问题但有证据缺口 → Human Check；证据可用且没有问题 → √**。有问题同时缺证据时仍为 X，并记录未确认范围。当前脚本不自动生成 NA；缺导出或没抓到图片不能当作不适用。
+
+| Item | 怎么检查 | 结果判断 |
+| --- | --- | --- |
+| **17.1 Does each URL have a title? (excluding target pages)** | 读取 SF **Page Titles:Missing**，只排除任务／session 中明确提供的 target URL。URL 去掉首尾空白后精确匹配，保留大小写、query 和结尾斜线。 | **√**：有效 Missing 导出排除后没有记录。**X**：仍有缺 Title 的 URL。**Human Check**：导出缺失、无效或问题行 Address 为空。没有 target 清单时不排除，注明检查全部 Missing 行；清单缺失本身不使结果变为 Human Check。 |
+| **17.2 Is the site free of any page title duplication?** | 读取 SF **Page Titles:Duplicate**，按 Title 1 分组显示，较大组在前；不从 All 自行重算重复。 | **√**：有效原生 Duplicate 导出无问题行。**X**：有重复 Title 记录。**Human Check**：缺导出、必要字段缺失，或 Address／Title 1 为空。 |
+| **17.3 Are page titles using the 580 pixel maximum width effectively?** | 读取 **Page Titles:All**，仅检查 `Indexability=Indexable`；使用 **Title 1 Pixel Width**，按宽度降序列出超限页面。 | **√**：所查可索引页面均 ≤580px，且没有证据缺口。**X**：至少一页 **>580px**；恰好 580px 不超限。**Human Check**：无确认超限，但缺字段、Address 为空、Indexability 未知或可索引页面宽度无效。本项只判断超宽，不判断标题过短或关键词质量。 |
+| **17.4 Are there multiple page titles** | 读取 SF **Page Titles:Multiple**，保留 Address、Title 1、Title 2。 | **√**：有效 Multiple 导出无问题行。**X**：有同页多个 Title 的记录。**Human Check**：缺导出、缺字段，或问题行 Address／Title 1／Title 2 为空。 |
+| **18.1 Does each URL have a description? (excluding target pages)** | 读取 SF **Meta Description:Missing**，应用与 17.1 相同的明确 target URL 排除清单。 | **√**：有效 Missing 导出排除后没有记录。**X**：仍有缺 Description 的 URL。**Human Check**：缺导出、无效导出或问题行 Address 为空。没有 target 清单时检查全部 Missing 行，并注明未排除。 |
+| **18.2 Is the site free of any meta description duplication?** | 读取 SF **Meta Description:Duplicate**，按 Meta Description 1 分组显示，较大组在前；不从 All 自行重算重复。 | **√**：有效原生 Duplicate 导出无问题行。**X**：有重复 Description 记录。**Human Check**：缺导出、缺字段，或 Address／Meta Description 1 为空。 |
+| **18.3 Are meta descriptions using the 155 character limit effectively?** | 读取 **Meta Description:All**，仅检查 `Indexability=Indexable`；直接计算导出文本的 Unicode 字符数，不裁掉空白，不使用字节数或旧版 880px。 | **√**：所查可索引页面均 ≤155 字符，且没有证据缺口。**X**：至少一页 **>155 字符**；恰好 155 不超限。**Human Check**：无确认超限，但 All 没有数据、缺字段、Address 为空或 Indexability 未知。本项不判断描述过短或文案质量；缺描述另见 18.1。 |
+| **19.1 Do all pages contain a single, keyword-optimised H1?** | 读取 SF **H1:Missing**。当前自动逻辑只检查缺失；多个 H1 由 19.3 检查，关键词优化由人工判断。 | **√**：有效 Missing 导出无问题行，仅表示未发现缺 H1。**X**：有缺 H1 的 URL。**Human Check**：导出缺失、无效或问题行 Address 为空。√ 不代表已验证关键词优化或每页恰好一个 H1。 |
+| **19.2 Are there H1 duplicates?** | 从 SF **H1:Duplicate** 开始；只有同页 H1-1 与 H1-2 去首尾空白后相同，且该 H1-1 在原生重复集合中只出现一次时，才剔除该行。出现次数按去首尾空白、不区分大小写计数；跨行共享仍保留。 | **√**：有效 Duplicate 导出在剔除后无问题行。**X**：仍有重复 H1 记录。**Human Check**：缺导出、缺 Address／H1-1／H1-2 列，或问题行 Address／H1-1 为空。纯同页多个 H1 仍由 19.3 检查。 |
+| **19.3 Are there multiple H1s tags in a single page?** | 读取 SF **H1:Multiple**，保留 Address、H1-1、H1-2。 | **√**：有效 Multiple 导出无问题行。**X**：有同页多个 H1 的记录。**Human Check**：缺导出、缺字段，或问题行 Address／H1-1／H1-2 为空。 |
+| **20.1 Do images contain alt text** | 读取 **Missing Alt Attribute & Text Inlinks**，列出 Source 页面和 Destination 图片。缺 Alt 属性及空 `alt=""` 都会入表；同一图片在多个页面出现可产生多行。 | **√**：有效 Alt 问题导出无记录，且图片导出证明已抓到图片。**X**：有缺失／空 Alt 的引用记录；当前脚本不会自动豁免装饰图片，修复前需人工确认用途。**Human Check**：缺 Alt 导出、引用身份字段无效，或全部图片导出都没有抓到图片。 |
+| **20.2 Oversized images** | 从 **All Image Inlinks** 读取 Size (Bytes)，没有该列时使用 Size；包含外部 CDN 图片，不与 Images:All 做内连接。核对 Images:All／Alt 中已观察图片是否有已知 inlink 大小，按大小降序列出。 | **√**：有可用图片大小观察，已观察图片的大小证据完整，且均 ≤204800 bytes。**X**：至少一张 **>204800 bytes（200KiB）**；恰好等于阈值不超限。**Human Check**：无确认超限，但缺大小列、大小无效／为 0、没有可用引用，或已观察图片缺对应大小。只验证已观察范围，不保证动态／未抓取图片已覆盖。 |
+
+有效、只有表头的 **Missing／Duplicate／Multiple／Alt 问题导出**可以表示零问题。All 导出另有要求：**Page Titles:All 必须可读且有数据，否则整个运行停止**；Meta Description:All 没有数据时 18.3 为 Human Check。文件匹配不唯一、CSV 无效或必要字段缺失均记录证据缺口。17.3／18.3 明确排除 Non-Indexable 行；其余项目沿用原生问题 filter 的结果，不额外添加统一 Indexable 筛选。
 
 ## 与 onsite 系列衔接
 
