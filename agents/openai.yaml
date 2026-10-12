@@ -1,0 +1,3 @@
+interface:
+  display_name: "Onsite Content Audit"
+  short_description: "Audit page titles, descriptions, H1 and images"
