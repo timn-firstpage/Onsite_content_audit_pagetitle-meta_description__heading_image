@@ -22,7 +22,7 @@ Partial evidence, missing numeric headers, target exclusions, image inlink versu
 - [x] Implement standalone validated Excel rendering and CLI/config resolution; test synthetic end-to-end and date/source behavior.
 - [x] Write concise skill, references, root config and repository README; include provenance, packaging and CI. Compare packaging/dependency discovery with sibling repositories.
 - [x] Validate skill, run regressions, inspect workbook output and have an independent scoped review. Fix supported findings.
-- [ ] Commit and push the new repository, verify remote content and report actual local/live validation limits.
+- [x] Commit and push the new repository, verify remote content and report actual local/live validation limits.
 
 ## Verification ledger
 
@@ -34,3 +34,4 @@ Partial evidence, missing numeric headers, target exclusions, image inlink versu
 - Synthetic workbook generated and read back; inspected local rendered Checklist and oversize-image previews. All customer/source archives ignored.
 - Ruling: coordinator owns master workbook/history; this module publishes fresh standalone content artifacts to avoid duplicate mutations across onsite flows.
 - Limit: no live SF MCP tool/session was available here; Multica import and SF export coverage remain runtime checks, not locally verified claims.
+- Published implementation d1b3c53 on main; GitHub SKILL.md and remote branch SHA verified. CI triggered for Windows/Linux × Python 3.10/3.12. Final CI result is reported separately from this initial publication record.
