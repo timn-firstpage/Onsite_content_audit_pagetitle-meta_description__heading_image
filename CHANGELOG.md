@@ -1,5 +1,10 @@
 # Changes
 
+## 1.1.2 — 2026-10-13
+
+- Replace the aggregate title issue tab with X-only individual 17.1–17.4 tabs, using the owner's exact sheet names/columns.
+- Preserve JSON detail fields and manual values through display-column mappings; keep four report files and other themes unchanged.
+
 ## 1.1.1 — 2026-10-13
 
 - Fix Windows CI path comparison to normalize 8.3 temporary-directory aliases.

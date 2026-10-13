@@ -13,11 +13,23 @@ from extract import ITEMS
 
 CHECK_HEADERS = ['Item No.', 'Item Name', 'Initial Check', 'Findings', 'Instruction']
 GROUPS = (
-    ('17', 'page_titles', '17. Page Title'),
+    ('17', 'page_titles', None),
     ('18', 'meta_descriptions', '18. meta_description'),
     ('19', 'headings', '19. Heading'),
     ('20', 'images', '20. Image'),
 )
+TITLE_DETAILS = {
+    '17.1': ('17.1 Page title -Missing',
+             [('Address', 'Address'), ('New Title', 'New Title'), ('Remarks', 'Remarks')]),
+    '17.2': ('17.2 Page title - Duplicate',
+             [('Address', 'Address'), ('Titles', 'Title 1'), ('New Title', 'New Title'),
+              ('Instructions (If have)', 'Remarks')]),
+    '17.3': ('17.3 Page title -Too Long',
+             [('Address', 'Address'), ('Title - 1', 'Title 1'),
+              ('Pixel Width ( max 580 pixels)', 'Title 1 Pixel Width'), ('Revised Title', 'Revised Title')]),
+    '17.4': ('17.4 Page title - Multiple',
+             [('Address', 'Address'), ('Title - 1', 'Title 1'), ('Title - 2', 'Title 2'), ('Instructions', 'Remarks')]),
+}
 
 
 def validate(data):
@@ -70,7 +82,16 @@ def build_report(data, output_dir):
                         key=lambda c: tuple(map(int, c['id'].split('.'))))
         expected = {'Checklist': [CHECK_HEADERS] +
                     [[c['id'], c['item_name'], c['result'], c['finding'], c['action']] for c in checks]}
-        if any(c['result'] == 'X' for c in checks):
+        if prefix == '17':
+            for c in checks:
+                if c['result'] == 'X' and c['id'] in TITLE_DETAILS:
+                    title_sheet, columns = TITLE_DETAILS[c['id']]
+                    rows = [[label for label, _ in columns]]
+                    for row in c['rows']:
+                        values = dict(zip(c['headers'], row))
+                        rows.append([values.get(source, '') for _, source in columns])
+                    expected[title_sheet] = rows
+        elif any(c['result'] == 'X' for c in checks):
             headers = ['Item No.'] + list(dict.fromkeys(h for c in checks for h in c['headers']))
             rows = [headers]
             for c in checks:
@@ -117,8 +138,9 @@ def render_workbook(expected):
             ws = wb.create_sheet(sheet)
             ws.freeze_panes = 'A2'
             ws.sheet_view.showGridLines = False
-            widths = [12, 52, 20, 65, 60] if sheet == 'Checklist' else [12] + [
-                22 if h in ('Title 1 Pixel Width', 'Character Count', 'Size (Bytes)') else 48 for h in rows[0][1:]]
+            widths = [12, 52, 20, 65, 60] if sheet == 'Checklist' else [
+                12 if h == 'Item No.' else 22 if h in ('Title 1 Pixel Width', 'Pixel Width ( max 580 pixels)',
+                                                      'Character Count', 'Size (Bytes)') else 48 for h in rows[0]]
             for i, width in enumerate(widths, 1):
                 ws.column_dimensions[get_column_letter(i)].width = width
             for r, values in enumerate(rows, 1):

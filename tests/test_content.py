@@ -154,11 +154,11 @@ class ContentTests(unittest.TestCase):
         import openpyxl
         wb = openpyxl.load_workbook(outputs[0])
         self.addCleanup(wb.close)
-        self.assertEqual(wb.sheetnames, ['Checklist', '17. Page Title'])
+        self.assertEqual(wb.sheetnames, ['Checklist', '17.2 Page title - Duplicate'])
         self.assertEqual(wb.sheetnames[0], 'Checklist')
-        self.assertEqual(wb['17. Page Title']['A2'].value, '17.2')
-        headers = [c.value for c in wb['17. Page Title'][1]]
-        value = wb['17. Page Title'].cell(2, headers.index('Title 1') + 1)
+        headers = [c.value for c in wb['17.2 Page title - Duplicate'][1]]
+        self.assertEqual(headers, ['Address', 'Titles', 'New Title', 'Instructions (If have)'])
+        value = wb['17.2 Page title - Duplicate'].cell(2, headers.index('Titles') + 1)
         self.assertEqual(value.value, '=1+1')
         self.assertEqual(value.data_type, 's')
         self.assertNotIn('20.2 Image - Oversize', wb.sheetnames)
@@ -204,8 +204,14 @@ class ContentTests(unittest.TestCase):
         import openpyxl
         outputs = report.build_report(data, self.path / 'merged')
         self.assertEqual(json.dumps(data, sort_keys=True), before)
-        for index, sheet, ids in ((0, '17. Page Title', ['17.1', '17.3']),
-                                  (3, '20. Image', ['20.1', '20.2'])):
+        wb = openpyxl.load_workbook(outputs[0])
+        try:
+            self.assertEqual(wb.sheetnames, ['Checklist', '17.1 Page title -Missing', '17.3 Page title -Too Long'])
+            self.assertEqual(wb['17.1 Page title -Missing']['A2'].value, 'https://example.com/missing')
+            self.assertEqual(wb['17.3 Page title -Too Long']['C2'].value, '581')
+        finally:
+            wb.close()
+        for index, sheet, ids in ((3, '20. Image', ['20.1', '20.2']),):
             wb = openpyxl.load_workbook(outputs[index])
             try:
                 self.assertEqual(wb.sheetnames, ['Checklist', sheet])
@@ -216,6 +222,43 @@ class ContentTests(unittest.TestCase):
                 self.assertIsNone(wb[sheet].cell(2, headers.index(metric) + 1).value)
             finally:
                 wb.close()
+
+    def test_title_four_detail_schemas_preserve_json(self):
+        self.full_exports()
+        self.write('page_titles_missing.csv', ['Address'], [['missing']])
+        self.write('page_titles_duplicate.csv', ['Address', 'Title 1'], [['duplicate', 'Same']])
+        self.write('page_titles_multiple.csv', ['Address', 'Title 1', 'Title 2'], [['multiple', 'First', 'Second']])
+        self.write('page_titles_all.csv', ['Address', 'Indexability', 'Title 1', 'Title 1 Pixel Width'],
+                   [['long', 'Indexable', 'Long', 581]])
+        data = self.audit()
+        data.update(site_name='Example', site_url='https://example.com/', audit_date='2026-10-13')
+        self.check(data, '17.1')['rows'][0] += ['Replacement', 'Missing remarks']
+        self.check(data, '17.2')['rows'][0] += ['Unique replacement', 'Duplicate instructions']
+        self.check(data, '17.3')['rows'][0] += ['Short replacement']
+        self.check(data, '17.4')['rows'][0] += ['Keep one title']
+        original = json.dumps(data, sort_keys=True)
+        import report
+        import openpyxl
+        outputs = report.build_report(data, self.path / 'three-tabs')
+        wb = openpyxl.load_workbook(outputs[0])
+        try:
+            expected = {
+                '17.1 Page title -Missing': (['Address', 'New Title', 'Remarks'], ['missing', 'Replacement', 'Missing remarks']),
+                '17.2 Page title - Duplicate': (['Address', 'Titles', 'New Title', 'Instructions (If have)'],
+                                               ['duplicate', 'Same', 'Unique replacement', 'Duplicate instructions']),
+                '17.3 Page title -Too Long': (['Address', 'Title - 1', 'Pixel Width ( max 580 pixels)', 'Revised Title'],
+                                             ['long', 'Long', '581', 'Short replacement']),
+                '17.4 Page title - Multiple': (['Address', 'Title - 1', 'Title - 2', 'Instructions'],
+                                              ['multiple', 'First', 'Second', 'Keep one title']),
+            }
+            self.assertEqual(wb.sheetnames, ['Checklist'] + list(expected))
+            for sheet, rows in expected.items():
+                self.assertEqual([[c.value for c in row] for row in wb[sheet]], list(rows))
+            self.assertEqual(wb['Checklist']['C5'].value, 'X')
+        finally:
+            wb.close()
+        self.assertEqual(json.dumps(data, sort_keys=True), original)
+        self.assertEqual(self.check(data, '17.4')['rows'], [['multiple', 'First', 'Second', 'Keep one title']])
 
     def test_report_existing_any_group_prevents_partial_output(self):
         self.full_exports()

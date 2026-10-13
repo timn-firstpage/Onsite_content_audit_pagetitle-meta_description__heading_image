@@ -4,22 +4,32 @@ Four files are always produced on a successful run, even when a theme has no iss
 
 | File | Checklist scope | X-only detail tab |
 | --- | --- | --- |
-| `{site name}_page_titles_audit_{YYYY-MM-DD}.xlsx` | 17.1–17.4 | `17. Page Title` |
+| `{site name}_page_titles_audit_{YYYY-MM-DD}.xlsx` | 17.1–17.4 | Separate 17.1–17.4 tabs below |
 | `{site name}_meta_descriptions_audit_{YYYY-MM-DD}.xlsx` | 18.1–18.3 | `18. meta_description` |
 | `{site name}_headings_audit_{YYYY-MM-DD}.xlsx` | 19.1–19.3 | `19. Heading` |
 | `{site name}_images_audit_{YYYY-MM-DD}.xlsx` | 20.1–20.2 | `20. Image` |
 
 Name from supplied site.name/--site-name, otherwise hostname without www. Date from --date/output.audit_date or output.timezone; never silently use another host's local date. Repeated audit uses a new run/content directory, never overwrites. The old combined content_audit workbook is no longer generated.
 
-Each workbook has one or two sheets: Checklist first; the named theme detail tab exists only when at least one of its checks is X. Merge all confirmed rows from that theme's X checks into that one tab, ordered by check ID and the existing issue-row ordering. Add Item No. to identify each subcheck. √ and Human Check do not create detail rows. No X in a theme means that workbook contains Checklist only. Headers are **row 1, data from row 2**.
+The titles workbook has Checklist first, followed by a separate detail tab for each X check in 17.1–17.4, in numeric order (one to five sheets total). The other three workbooks retain one or two sheets: Checklist first, then their single named theme tab when at least one check is X. Merge 18/19/20 X rows by field name and add Item No. to identify subchecks. √ and Human Check do not create detail tabs or rows. No X in a theme means that workbook contains Checklist only. Headers are **row 1, data from row 2**.
+
+Titles use exactly these physical tab names and columns, without an added Item No. column:
+
+| Title detail tab | Columns |
+| --- | --- |
+| 17.1 Page title -Missing | Address, New Title, Remarks |
+| 17.2 Page title - Duplicate | Address, Titles, New Title, Instructions (If have) |
+| 17.3 Page title -Too Long | Address, Title - 1, Pixel Width ( max 580 pixels), Revised Title |
+| 17.4 Page title - Multiple | Address, Title - 1, Title - 2, Instructions |
+
+Map JSON Title 1 to Titles (17.2) or Title - 1 (17.3/17.4), Title 2 to Title - 2, and Title 1 Pixel Width to Pixel Width ( max 580 pixels). Map the existing Remarks field to Instructions (If have) for 17.2 and Instructions for 17.4. Manual fields remain blank unless supplied; no invented replacements or instructions. The old combined 17. Page Title tab is no longer generated.
 
 Checklist: `Item No. | Item Name | Initial Check | Findings | Instruction`. Each theme's original English questions appear once; together the four Checklists cover all twelve checks. √/X/Human Check, no Yes/No, Coverage or extra history columns. Findings is the short observed conclusion; Instruction is the person's next action, `—` if none. Known issues with gaps remain X and disclose the incomplete part. Pure gaps stay on Checklist, not issue tabs. H1 presence and decorative-image caveats are explicit.
 
-Merged detail headers are Item No. followed by the ordered union of that theme's existing JSON headers. Map cells by header name; leave fields absent from a row blank. Do not align mixed issue rows by raw column position or discard metrics/manual fields.
+For 18/19/20, merged detail headers are Item No. followed by the ordered union of that theme's existing JSON headers. Map cells by header name; leave fields absent from a row blank. Do not align mixed issue rows by raw column position or discard metrics/manual fields.
 
 | Theme detail tab | Columns |
 | --- | --- |
-| 17. Page Title | Item No., Address, New Title, Remarks, Title 1, Title 1 Pixel Width, Revised Title, Title 2 |
 | 18. meta_description | Item No., Address, Instruction, Meta Description 1, Character Count |
 | 19. Heading | Item No., Address, Instruction, H1-1, Remarks, H1-2 |
 | 20. Image | Item No., Source, Destination, Screenshots (If have), Size (Bytes) |
