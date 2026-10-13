@@ -1,5 +1,12 @@
 # Changes
 
+## 1.1.0 — 2026-10-13
+
+- Split Excel delivery into page_titles, meta_descriptions, headings and images workbooks, each with its theme Checklist.
+- Merge each theme's confirmed X rows into a single named detail tab: 17. Page Title, 18. meta_description, 19. Heading, 20. Image. Preserve fields by name and add Item No.
+- Keep the shared twelve-check findings.json unchanged; use reports (four paths) in run-status.json instead of report.
+- Precheck every destination and verify all four reports; handled generation failures remove only newly created workbooks.
+
 ## 1.0.2 — 2026-10-12
 
 - Add a read-only shared configuration adapter with explicit config precedence and optional ONSITE_AUDIT_CONFIG.

@@ -2,7 +2,7 @@
 
 <p align="center"><img src="assets/onsite-audit-cover.png" alt="Onsite audit cover showing HTTPS security, website inspection, crawl connections, hostname redirects, and an audit report" width="640"></p>
 
-独立的 **`onsite-audit-content`** skill，检查 **17.1–20.2**。基于你已跑通的 Multica 提取逻辑整理，与 HTTPS、robots、sitemap 系列共用 SF session、saved crawl、配置和运行目录。当前版本 **1.0.2**。
+独立的 **`onsite-audit-content`** skill，检查 **17.1–20.2**。基于你已跑通的 Multica 提取逻辑整理，与 HTTPS、robots、sitemap 系列共用 SF session、saved crawl、配置和运行目录。当前版本 **1.1.0**。
 
 ## 高层工作流
 
@@ -18,11 +18,11 @@ flowchart TD
     F --> G["Content skill 校验数据并审核<br/>17 标题 · 18 描述 · 19 H1 · 20 图片"]
     G --> H["十二项判定<br/>√ 无问题 · X 有问题 · Human Check 证据不足"]
     H --> I["findings.json：全部十二项与问题行<br/>manifest.json：来源、阈值和证据记录"]
-    I --> J["生成 Excel<br/>Checklist 始终包含十二项<br/>只为 X 创建对应明细 tab"]
+    I --> J["生成四份 Excel：17／18／19／20<br/>各自 Checklist + 有 X 才建主题明细 tab"]
     J --> K["读回验证与版面检查<br/>交付报告，保留原始证据"]
 ```
 
-共用配置、SF session、导出缓存和累计预算贯穿整个流程。全通过时 Excel 只有 Checklist；证据不足的项目留在 Checklist 并写明补查动作。Page Titles:All 缺失、无效或没有数据时停止本次报告生成。Python 处理已取得的 CSV；shared config 的准备和交接由 agent 按实际可用工具执行。
+共用配置、SF session、导出缓存和累计预算贯穿整个流程。每份 Excel 只含该主题的 Checklist；该主题没有 X 时不创建明细 tab。证据不足的项目留在 Checklist 并写明补查动作。Page Titles:All 缺失、无效或没有数据时停止本次报告生成。Python 处理已取得的 CSV；shared config 的准备和交接由 agent 按实际可用工具执行。
 
 ## 审核范围
 
@@ -111,13 +111,16 @@ target 清单通过 config 的 content.target_urls、content.target_urls_file �
 
 `<shared-run>/content/`：
 
-- `{site name}_content_audit_{YYYY-MM-DD}.xlsx`：Checklist + 仅结果为 X 的问题明细 tab（最多 12 个）。
+- `{site name}_page_titles_audit_{YYYY-MM-DD}.xlsx`：17.1–17.4 Checklist；有 X 才创建 `17. Page Title`。
+- `{site name}_meta_descriptions_audit_{YYYY-MM-DD}.xlsx`：18.1–18.3 Checklist；有 X 才创建 `18. meta_description`。
+- `{site name}_headings_audit_{YYYY-MM-DD}.xlsx`：19.1–19.3 Checklist；有 X 才创建 `19. Heading`。
+- `{site name}_images_audit_{YYYY-MM-DD}.xlsx`：20.1–20.2 Checklist；有 X 才创建 `20. Image`。
 - findings.json：十二项结果与全部确认问题行，供总流程复用。
 - manifest.json：来源、哈希、阈值、排除、计数和缺口。
 - raw/：可选完整 CSV 归档，默认开启。
-- run-status.json：XLSX 读回验证成功后写 complete。
+- run-status.json：四份 XLSX 全部读回验证成功后写 complete，`reports` 列出四个路径。
 
-Checklist：Item No. / Item Name / Initial Check / Findings / Instruction。结果 **√ / X / Human Check**；有确认问题且同时缺证据仍 X，明确缺口。Checklist 始终保留十二项；仅 X 创建对应问题明细 tab，√ 和 Human Check 不创建空白明细 tab，全通过时只有 Checklist。明细沿用原来的 JSON headers/rows 和各项列结构，第 1 行表头、第 2 行数据。findings.json 仍保留全部十二项，空问题数组及证据缺口不删除。[完整输出契约](references/output-contract.md)
+默认成功输出 **4 份 Excel + 3 份 JSON + 可选 raw/ 原始 CSV 文件夹**；即使全通过也生成四份 Excel。每份 Checklist 沿用 Item No. / Item Name / Initial Check / Findings / Instruction，只列对应主题；四份合计十二项。结果 **√ / X / Human Check**；有确认问题且同时缺证据仍 X，明确缺口。同主题的 X 问题行合并到一个命名明细 tab，增加 Item No. 区分子项，按字段名对应原 JSON 数据，缺少的字段留空。第 1 行表头、第 2 行数据。findings.json 仍保留全部十二项及原有 headers/rows/sheet 元数据；原 sheet 值供兼容，不再是实际 Excel tab 名。空问题数组及证据缺口不删除。[完整输出契约](references/output-contract.md)
 
 不覆盖旧文件；同日更新使用新的 run 目录。日期按用户时区或明确 audit_date。所有客户资料在 ignored runs/，不要提交 GitHub。英文原始 checklist 问题保留，Findings/Instruction 支持 zh/en。
 

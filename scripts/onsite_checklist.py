@@ -133,13 +133,14 @@ def run(args):
         json.dump(data, f, ensure_ascii=False, indent=2)
     with (destination / 'manifest.json').open('x', encoding='utf-8') as f:
         json.dump(manifest, f, ensure_ascii=False, indent=2)
-    report = build_report(data, destination)
+    reports = build_report(data, destination)
     with (destination / 'run-status.json').open('x', encoding='utf-8') as f:
-        json.dump({'state': 'complete', 'report': str(report), 'items': 12}, f, indent=2)
+        json.dump({'state': 'complete', 'reports': [str(p) for p in reports], 'items': 12}, f, indent=2)
     print('ITEM  ROWS  RESULT')
     for c in data['checks']:
         print(f"{c['id']:<5} {c['row_count']:>5}  {c['result']}")
-    print(f'WROTE: {report}')
+    for report in reports:
+        print(f'WROTE: {report}')
 
 
 def main():

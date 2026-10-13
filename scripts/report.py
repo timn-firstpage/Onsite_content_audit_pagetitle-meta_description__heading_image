@@ -12,6 +12,12 @@ from openpyxl.utils import get_column_letter
 from extract import ITEMS
 
 CHECK_HEADERS = ['Item No.', 'Item Name', 'Initial Check', 'Findings', 'Instruction']
+GROUPS = (
+    ('17', 'page_titles', '17. Page Title'),
+    ('18', 'meta_descriptions', '18. meta_description'),
+    ('19', 'headings', '19. Heading'),
+    ('20', 'images', '20. Image'),
+)
 
 
 def validate(data):
@@ -54,23 +60,65 @@ def build_report(data, output_dir):
     name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', data['site_name']).strip(' .')
     if not name or len(name.encode('utf-8')) > 180:
         raise ValueError('Provide a shorter portable site_name')
-    path = Path(output_dir) / f'{name}_content_audit_{data["audit_date"]}.xlsx'
-    if path.exists():
-        raise FileExistsError(f'Report already exists: {path}; choose a new run directory')
+    paths = [Path(output_dir) / f'{name}_{slug}_audit_{data["audit_date"]}.xlsx' for _, slug, _ in GROUPS]
+    for path in paths:
+        if path.exists():
+            raise FileExistsError(f'Report already exists: {path}; choose a new run directory')
+    staged = []
+    for prefix, _, sheet in GROUPS:
+        checks = sorted((c for c in data['checks'] if c['id'].split('.')[0] == prefix),
+                        key=lambda c: tuple(map(int, c['id'].split('.'))))
+        expected = {'Checklist': [CHECK_HEADERS] +
+                    [[c['id'], c['item_name'], c['result'], c['finding'], c['action']] for c in checks]}
+        if any(c['result'] == 'X' for c in checks):
+            headers = ['Item No.'] + list(dict.fromkeys(h for c in checks for h in c['headers']))
+            rows = [headers]
+            for c in checks:
+                if c['result'] == 'X':
+                    for row in c['rows']:
+                        values = dict(zip(c['headers'], row))
+                        rows.append([c['id']] + [values.get(h, '') for h in headers[1:]])
+            expected[sheet] = rows
+        staged.append((render_workbook(expected), expected))
+    created = []
+    try:
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        for path, (contents, expected) in zip(paths, staged):
+            with path.open('xb') as f:
+                created.append(path)
+                f.write(contents)
+            verify_workbook(path, expected)
+        return paths
+    except Exception:
+        for path in created:
+            path.unlink(missing_ok=True)
+        raise
+
+
+def verify_workbook(source, expected):
+    reopened = openpyxl.load_workbook(source)
+    try:
+        if reopened.sheetnames != list(expected):
+            raise ValueError('Workbook worksheet verification failed')
+        for sheet, rows in expected.items():
+            actual = [[str(c.value) if c.value is not None else '' for c in row] for row in reopened[sheet].iter_rows()]
+            wanted = [[text(v) for v in row] for row in rows]
+            if actual != wanted or any(c.data_type == 'f' for row in reopened[sheet] for c in row):
+                raise ValueError(f'Workbook content verification failed: {sheet}')
+    finally:
+        reopened.close()
+
+
+def render_workbook(expected):
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
-    expected = {}
-    checks = sorted(data['checks'], key=lambda c: tuple(map(int, c['id'].split('.'))))
-    expected['Checklist'] = [CHECK_HEADERS] + [[c['id'], c['item_name'], c['result'], c['finding'], c['action']] for c in checks]
-    for c in checks:
-        if c['result'] == 'X':
-            expected[c['sheet']] = [c['headers']] + [r + [''] * (len(c['headers']) - len(r)) for r in c['rows']]
     try:
         for sheet, rows in expected.items():
             ws = wb.create_sheet(sheet)
             ws.freeze_panes = 'A2'
             ws.sheet_view.showGridLines = False
-            widths = [12, 52, 20, 65, 60] if sheet == 'Checklist' else [60] * len(rows[0])
+            widths = [12, 52, 20, 65, 60] if sheet == 'Checklist' else [12] + [
+                22 if h in ('Title 1 Pixel Width', 'Character Count', 'Size (Bytes)') else 48 for h in rows[0][1:]]
             for i, width in enumerate(widths, 1):
                 ws.column_dimensions[get_column_letter(i)].width = width
             for r, values in enumerate(rows, 1):
@@ -95,27 +143,10 @@ def build_report(data, output_dir):
             ws.page_setup.fitToWidth = 1
             ws.page_setup.fitToHeight = 0
 
-        def verify(source):
-            reopened = openpyxl.load_workbook(source)
-            try:
-                if reopened.sheetnames != list(expected):
-                    raise ValueError('Workbook worksheet verification failed')
-                for sheet, rows in expected.items():
-                    actual = [[str(c.value) if c.value is not None else '' for c in row] for row in reopened[sheet].iter_rows()]
-                    wanted = [[text(v) for v in row] for row in rows]
-                    if actual != wanted or any(c.data_type == 'f' for row in reopened[sheet] for c in row):
-                        raise ValueError(f'Workbook content verification failed: {sheet}')
-            finally:
-                reopened.close()
-
         buffer = BytesIO()
         wb.save(buffer)
         buffer.seek(0)
-        verify(buffer)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open('xb') as f:
-            f.write(buffer.getvalue())
-        verify(path)
-        return path
+        verify_workbook(buffer, expected)
+        return buffer.getvalue()
     finally:
         wb.close()

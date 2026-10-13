@@ -7,6 +7,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
@@ -146,14 +147,20 @@ class ContentTests(unittest.TestCase):
         data = self.audit()
         import report
         data.update(site_name='Example', site_url='https://example.com/', audit_date='2026-10-12')
-        output = report.build_report(data, self.path / 'reports')
+        outputs = report.build_report(data, self.path / 'reports')
+        self.assertEqual([p.name for p in outputs], [
+            'Example_page_titles_audit_2026-10-12.xlsx', 'Example_meta_descriptions_audit_2026-10-12.xlsx',
+            'Example_headings_audit_2026-10-12.xlsx', 'Example_images_audit_2026-10-12.xlsx'])
         import openpyxl
-        wb = openpyxl.load_workbook(output)
+        wb = openpyxl.load_workbook(outputs[0])
         self.addCleanup(wb.close)
-        self.assertEqual(wb.sheetnames, ['Checklist', '17.2 Page titles - Duplicate'])
+        self.assertEqual(wb.sheetnames, ['Checklist', '17. Page Title'])
         self.assertEqual(wb.sheetnames[0], 'Checklist')
-        self.assertEqual(wb['17.2 Page titles - Duplicate']['B2'].value, '=1+1')
-        self.assertEqual(wb['17.2 Page titles - Duplicate']['B2'].data_type, 's')
+        self.assertEqual(wb['17. Page Title']['A2'].value, '17.2')
+        headers = [c.value for c in wb['17. Page Title'][1]]
+        value = wb['17. Page Title'].cell(2, headers.index('Title 1') + 1)
+        self.assertEqual(value.value, '=1+1')
+        self.assertEqual(value.data_type, 's')
         self.assertNotIn('20.2 Image - Oversize', wb.sheetnames)
         with self.assertRaises(FileExistsError):
             report.build_report(data, self.path / 'reports')
@@ -167,17 +174,81 @@ class ContentTests(unittest.TestCase):
                 (self.path / 'h1_missing.csv').unlink()
             data = self.audit()
             data.update(site_name='Example', site_url='https://example.com/', audit_date='2026-10-12')
-            output = report.build_report(data, self.path / str(unknown))
-            with output.open('rb') as source:
-                wb = openpyxl.load_workbook(source)
+            outputs = report.build_report(data, self.path / str(unknown))
+            self.assertEqual(len(outputs), 4)
+            for output, count in zip(outputs, (4, 3, 3, 2)):
+                wb = openpyxl.load_workbook(output)
                 try:
                     self.assertEqual(wb.sheetnames, ['Checklist'])
-                    self.assertEqual(wb['Checklist'].max_row, 13)
+                    self.assertEqual(wb['Checklist'].max_row, count + 1)
                     self.assertEqual(len(data['checks']), 12)
                     self.assertTrue(all(not c['rows'] for c in data['checks']))
-                    self.assertEqual(wb['Checklist']['C9'].value, 'Human Check' if unknown else '√')
+                    if output == outputs[2]:
+                        self.assertEqual(wb['Checklist']['C2'].value, 'Human Check' if unknown else '√')
                 finally:
                     wb.close()
+
+    def test_report_merges_x_rows_by_header_without_changing_json(self):
+        self.full_exports()
+        self.write('page_titles_missing.csv', ['Address'], [['https://example.com/missing']])
+        self.write('page_titles_all.csv', ['Address', 'Indexability', 'Title 1', 'Title 1 Pixel Width'],
+                   [['https://example.com/long', 'Indexable', 'Long', 581]])
+        self.write('images_missing_alt_attribute_and_text_inlinks.csv', ['Source', 'Destination'],
+                   [['https://example.com/a', 'https://cdn.example.com/a.png']])
+        self.write('all_image_inlinks.csv', ['Source', 'Destination', 'Size (Bytes)'],
+                   [['https://example.com/a', 'https://cdn.example.com/a.png', 204801]])
+        data = self.audit()
+        data.update(site_name='Example', site_url='https://example.com/', audit_date='2026-10-13')
+        before = json.dumps(data, sort_keys=True)
+        import report
+        import openpyxl
+        outputs = report.build_report(data, self.path / 'merged')
+        self.assertEqual(json.dumps(data, sort_keys=True), before)
+        for index, sheet, ids in ((0, '17. Page Title', ['17.1', '17.3']),
+                                  (3, '20. Image', ['20.1', '20.2'])):
+            wb = openpyxl.load_workbook(outputs[index])
+            try:
+                self.assertEqual(wb.sheetnames, ['Checklist', sheet])
+                self.assertEqual([wb[sheet].cell(r, 1).value for r in (2, 3)], ids)
+                headers = [c.value for c in wb[sheet][1]]
+                metric = 'Title 1 Pixel Width' if index == 0 else 'Size (Bytes)'
+                self.assertEqual(wb[sheet].cell(3, headers.index(metric) + 1).value, '581' if index == 0 else '204801')
+                self.assertIsNone(wb[sheet].cell(2, headers.index(metric) + 1).value)
+            finally:
+                wb.close()
+
+    def test_report_existing_any_group_prevents_partial_output(self):
+        self.full_exports()
+        data = self.audit()
+        data.update(site_name='Example', site_url='https://example.com/', audit_date='2026-10-13')
+        destination = self.path / 'conflict'
+        destination.mkdir()
+        existing = destination / 'Example_images_audit_2026-10-13.xlsx'
+        existing.write_bytes(b'original')
+        import report
+        with self.assertRaises(FileExistsError):
+            report.build_report(data, destination)
+        self.assertEqual(list(destination.iterdir()), [existing])
+        self.assertEqual(existing.read_bytes(), b'original')
+
+    def test_report_verification_failure_removes_only_new_reports(self):
+        self.full_exports()
+        data = self.audit()
+        data.update(site_name='Example', site_url='https://example.com/', audit_date='2026-10-13')
+        destination = self.path / 'failure'
+        destination.mkdir()
+        unrelated = destination / 'keep.txt'
+        unrelated.write_text('keep')
+        import report
+        verify = report.verify_workbook
+        def fail_second_file(source, expected):
+            if isinstance(source, Path) and 'meta_descriptions' in source.name:
+                raise ValueError('simulated verification failure')
+            return verify(source, expected)
+        with patch.object(report, 'verify_workbook', side_effect=fail_second_file):
+            with self.assertRaisesRegex(ValueError, 'simulated'):
+                report.build_report(data, destination)
+        self.assertEqual(list(destination.iterdir()), [unrelated])
 
     def cli(self, config, run='run'):
         script = ROOT / 'scripts' / 'onsite_checklist.py'
@@ -202,6 +273,12 @@ class ContentTests(unittest.TestCase):
         data = json.loads((self.path / 'run' / 'content' / 'findings.json').read_text(encoding='utf-8'))
         self.assertEqual(data['audit_date'], '2026-10-12')
         self.assertTrue((self.path / 'run' / 'content' / 'manifest.json').exists())
+        status = json.loads((self.path / 'run' / 'content' / 'run-status.json').read_text())
+        self.assertEqual(status['state'], 'complete')
+        self.assertEqual(len(status['reports']), 4)
+        self.assertTrue(all(Path(p).exists() for p in status['reports']))
+        self.assertEqual(len(list((self.path / 'run' / 'content').glob('*.xlsx'))), 4)
+        self.assertNotIn('report', status)
         self.assertNotEqual(self.cli(config).returncode, 0)
 
     def test_cli_global_config_handover_and_shared_usage_preserved(self):
