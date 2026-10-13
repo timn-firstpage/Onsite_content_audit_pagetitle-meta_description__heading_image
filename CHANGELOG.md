@@ -1,5 +1,11 @@
 # Changes
 
+## 1.1.1 — 2026-10-13
+
+- Fix Windows CI path comparison to normalize 8.3 temporary-directory aliases.
+- Add a portable local-venv setup/check helper and MacBook runtime instructions without machine-specific paths.
+- Include macOS Python 3.10/3.12 in CI and smoke-test environment setup/check-only across platforms.
+
 ## 1.1.0 — 2026-10-13
 
 - Split Excel delivery into page_titles, meta_descriptions, headings and images workbooks, each with its theme Checklist.

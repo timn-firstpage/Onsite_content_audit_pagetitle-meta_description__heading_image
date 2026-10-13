@@ -7,7 +7,8 @@ from zipfile import ZipFile, ZIP_DEFLATED
 def package(output):
     root = Path(__file__).resolve().parents[1]
     files = [root / p for p in ('SKILL.md', 'README.md', 'CHANGELOG.md', 'requirements.txt', 'config.template.json', 'assets/onsite-audit-cover.png',
-                                'scripts/extract.py', 'scripts/report.py', 'scripts/onsite_checklist.py', 'scripts/shared_config.py')]
+                                'scripts/extract.py', 'scripts/report.py', 'scripts/onsite_checklist.py', 'scripts/shared_config.py',
+                                'scripts/setup_runtime.py')]
     files += sorted((root / 'references').glob('*.md'))
     files += sorted((root / 'agents').glob('*.yaml'))
     output = output.resolve()

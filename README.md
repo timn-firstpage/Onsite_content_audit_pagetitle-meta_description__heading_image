@@ -2,7 +2,7 @@
 
 <p align="center"><img src="assets/onsite-audit-cover.png" alt="Onsite audit cover showing HTTPS security, website inspection, crawl connections, hostname redirects, and an audit report" width="640"></p>
 
-独立的 **`onsite-audit-content`** skill，检查 **17.1–20.2**。基于你已跑通的 Multica 提取逻辑整理，与 HTTPS、robots、sitemap 系列共用 SF session、saved crawl、配置和运行目录。当前版本 **1.1.0**。
+独立的 **`onsite-audit-content`** skill，检查 **17.1–20.2**。基于你已跑通的 Multica 提取逻辑整理，与 HTTPS、robots、sitemap 系列共用 SF session、saved crawl、配置和运行目录。当前版本 **1.1.1**。
 
 ## 高层工作流
 
@@ -81,13 +81,26 @@ flowchart TD
 
 Python **3.10+**，Windows/macOS/Linux。当前运行脚本不调用 SF CLI，也不固定 Mac 路径或 MCP 端口。配置 SF MCP 和准备 Python 是独立工作，导入 skill 不会自动安装它们。
 
+MacBook／Linux：在仓库根目录或已导入 skill 的实际目录运行以下命令（需先有 Python 3.10+）：
+
 ```bash
-python -m venv .venv
-# Windows: .venv/Scripts/python.exe；macOS/Linux: .venv/bin/python
-python -m pip install -r requirements.txt
+python3 scripts/setup_runtime.py --venv .venv
+.venv/bin/python scripts/setup_runtime.py --venv .venv --check-only
+.venv/bin/python scripts/onsite_checklist.py --config runs/current/config.json --run-dir .
 ```
 
-上面的 python 使用已激活虚拟环境的解释器，或改为其实际路径/AUDIT_PYTHON。
+最后一行要求已有本次配置和 CSV；替换为你的实际相对目录。`--run-dir .` 从配置文件目录解析，输出到 runs/current/content/；同目录下的 exports 在 JSON 填 `source.export_directory: "exports"`。脚本不自动创建网站配置或启动 SF。若 skill 安装目录不可写，`--venv` 指向另一个可写目录，并使用脚本打印的解释器路径。路径包含空格时用引号。
+
+Windows：
+
+```powershell
+py -3 scripts/setup_runtime.py --venv .venv
+.\.venv\Scripts\python.exe scripts/onsite_checklist.py --config runs/current/config.json --run-dir .
+```
+
+设置脚本仅安装到选定的本地 venv，不更改系统 Python、全局环境变量、SF 路径或 MCP 端口。requirements 路径从脚本实际位置解析，venv 路径从当前目录解析；支持已有合适 venv 复用，已有非 venv 目录会明确报错并保留文件。`--check-only` 只验证，不安装依赖。没有 Python 3.10+／venv／pip 时明确报告缺少的环境，不自动安装系统软件。[MacBook 与跨平台运行说明](references/runtime.md)
+
+以下通用命令中的 python 使用已设置的 venv 解释器，或由 agent 通过 AUDIT_PYTHON 指定当前机器的实际解释器；AUDIT_PYTHON 不会被审核脚本自动切换。
 
 复制 config.template.json 到本次 run/config.json，填写 `site.start_url`、`source.export_directory`、`output.audit_date` 或 timezone。相对路径从 config 文件目录解析。
 
@@ -145,8 +158,8 @@ python scripts/package_skill.py --output dist/onsite-audit-content.zip
 python -m unittest discover -s tests -v
 ```
 
-CI 在 Windows/Linux、Python 3.10/3.12 上运行离线测试并检查导入包。测试覆盖原生过滤、H1 碰撞、阈值、target 排除、缺字段、CDN 图片、配置/站点/时区、禁止覆盖和 Excel 字面文本。脚本读回验证每个单元格与 tab。
+CI 在 Windows/Linux/macOS、Python 3.10/3.12 上运行离线测试、环境设置/只读检查并检查导入包。环境设置阶段需联网安装 requirements；审核测试本身使用合成证据。测试覆盖原生过滤、H1 碰撞、阈值、target 排除、缺字段、CDN 图片、配置/站点/时区、禁止覆盖和 Excel 字面文本。脚本读回验证每个单元格与 tab。
 
 提取设计来自 [FirstPage 原始 skill](https://github.com/firstpage-seo/onsite-checking-AI-workflows/tree/main/.claude/skills/onsite-canonical-meta-images-extraction-multica) 和仓库所有者提供的 Multica 修改版。保留成熟判断，拆除其他审核/整表 Review，并按所有者确认将 18.3 改成字符数。当前实现没有复制客户数据或上游 Excel 模板；[版本记录](CHANGELOG.md)说明有意变化。
 
-本地离线测试和合成 CSV→XLSX 可以验证数据处理；它们不证明真实 Multica 导入、SF session 导出、动态图片抓取完整或 macOS runtime 已验证。正式使用时按 session 交接记录确认实际范围。
+离线测试和合成 CSV→XLSX 可以验证数据处理，跨平台 CI 可验证对应 runner 上的 Python 环境；它们不证明你的 MacBook 已安装环境、真实 Multica 导入、SF session 导出或动态图片抓取完整。正式使用时按 session 交接记录确认实际范围。
