@@ -27,7 +27,8 @@ class SharedConfigTests(unittest.TestCase):
         path = self.write('global.json', original)
         with patch.dict(os.environ, {'ONSITE_AUDIT_CONFIG': str(path)}):
             config, base, metadata = load_config()
-        self.assertEqual(base, self.root)
+        # Windows TEMP may use an 8.3 alias; the loader returns the resolved path.
+        self.assertEqual(base, self.root.resolve())
         self.assertEqual(config['budget'], original['budget'])
         self.assertEqual(config['custom'], original['custom'])
         self.assertTrue(config['checks']['robots'])
