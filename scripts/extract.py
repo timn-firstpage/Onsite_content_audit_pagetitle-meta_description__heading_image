@@ -159,7 +159,7 @@ def audit(exports_dir, targets=None, title_px=580, description_chars=155, image_
         ('18.3', 'description_all', 'Meta Description 1', None, description_chars)):
         needed = {'Indexability', text_field} | ({metric_field} if metric_field else set())
         missing = needed - set(records[source]['headers'])
-        rows, gaps = [], []
+        rows, gaps, pixels = [], [], []
         if not exports[source]:
             gaps.append(f'{source}: All report has no observations; an empty issue filter is different.')
         if missing:
@@ -176,8 +176,22 @@ def audit(exports_dir, targets=None, title_px=580, description_chars=155, image_
                     gaps.append(f'{source}: invalid numeric width for {row["Address"]}.')
                 elif width > threshold:
                     rows.append([row['Address'], row[text_field], int(width)])
-        rows.sort(key=lambda r: -r[2])
+                    if item == '18.3':
+                        pixel = number(row.get('Meta Description 1 Pixel Width'))
+                        pixels.append(pixel if pixel is not None and pixel > 0 else None)
+        if item == '18.3':
+            ordered = sorted(zip(rows, pixels), key=lambda pair: -pair[0][2])
+            rows = [row for row, _ in ordered]
+            pixels = [int(pixel) if pixel is not None and pixel.is_integer() else pixel for _, pixel in ordered]
+        else:
+            rows.sort(key=lambda r: -r[2])
         add(item, rows, [source], gaps)
+        if item == '18.3':
+            checks[-1]['pixel_widths'] = pixels
+            checks[-1]['display_gaps'] = [f'Pixel Width unavailable: {row[0]}.' for row, pixel in zip(rows, pixels) if pixel is None]
+            if checks[-1]['display_gaps']:
+                checks[-1]['finding'] += (' 像素宽度缺失，明细留空；仍按字符数判断。' if language == 'zh'
+                                         else ' Missing pixel widths are blank; judgment still uses character count.')
 
     captured = any(exports[s] for s in ('images_all', 'alt', 'inlinks'))
     alt_rows, alt_gaps = clean('alt', ['Source', 'Destination'])

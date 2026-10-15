@@ -1,5 +1,11 @@
 # Changes
 
+## 1.2.0 — 2026-10-15
+
+- Align individual 18/19/20 issue tab names and columns with the owner's 2026 template; preserve its literal 18. Descriptions - Missing name. Keep 17 as previously confirmed.
+- Display actual SF pixel widths in 18.3 while retaining the >155-character decision. Add row-aligned pixel_widths/display_gaps metadata without changing existing JSON row fields. Missing pixels render blank, never as character counts.
+- Keep four report files, X-only detail tabs, standalone row-1 headers and the current 200KiB/all-format image rule.
+
 ## 1.1.2 — 2026-10-13
 
 - Replace the aggregate title issue tab with X-only individual 17.1–17.4 tabs, using the owner's exact sheet names/columns.

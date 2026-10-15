@@ -211,17 +211,83 @@ class ContentTests(unittest.TestCase):
             self.assertEqual(wb['17.3 Page title -Too Long']['C2'].value, '581')
         finally:
             wb.close()
-        for index, sheet, ids in ((3, '20. Image', ['20.1', '20.2']),):
+        wb = openpyxl.load_workbook(outputs[3])
+        try:
+            self.assertEqual(wb.sheetnames, ['Checklist', '20.1 Image - Alt Text Missing', '20.2 Image - Oversize'])
+            self.assertEqual(wb['20.1 Image - Alt Text Missing']['A2'].value, 'https://example.com/a')
+            self.assertEqual(wb['20.2 Image - Oversize']['C2'].value, '204801')
+        finally:
+            wb.close()
+
+    def test_template_detail_names_and_columns_for_18_to_20(self):
+        self.full_exports()
+        data = self.audit()
+        expected = {
+            '18.1': ('18. Descriptions - Missing', ['Address', 'Remarks'], ['missing', 'note']),
+            '18.2': ('18.2 Descriptions - Duplicate', ['Address', 'Meta Description'], ['dup', 'Description']),
+            '18.3': ('18.3 Descriptions - Too Long', ['Address', 'Meta Description', 'Pixel Width'], ['long', 'Long description', 156]),
+            '19.1': ('19.1 H1 - Missing', ['Address', 'Remarks'], ['missing', 'note']),
+            '19.2': ('19.2 H1 - Duplicate', ['Address', 'H1', 'Instructions'], ['dup', 'Heading', 'note']),
+            '19.3': ('19.3 H1 - Multiple', ['Address', 'H1-1', 'H1-2'], ['multiple', 'First', 'Second']),
+            '20.1': ('20.1 Image - Alt Text Missing', ['Source', 'Destination', 'Example Screenshots (If Applicable)'],
+                     ['page', 'image.png', 'screenshot reference']),
+            '20.2': ('20.2 Image - Oversize', ['Source', 'Destination', 'Size (Bytes)'], ['page', 'image.png', 204801]),
+        }
+        for item, (_, _, row) in expected.items():
+            self.check(data, item).update(result='X', rows=[row], row_count=1)
+        self.check(data, '18.3')['pixel_widths'] = [901]
+        data.update(site_name='Example', site_url='https://example.com/', audit_date='2026-10-15')
+        original = json.dumps(data, sort_keys=True)
+        import report
+        import openpyxl
+        outputs = report.build_report(data, self.path / 'template')
+        for index, prefix in ((1, '18.'), (2, '19.'), (3, '20.')):
+            items = [item for item in expected if item.startswith(prefix)]
             wb = openpyxl.load_workbook(outputs[index])
             try:
-                self.assertEqual(wb.sheetnames, ['Checklist', sheet])
-                self.assertEqual([wb[sheet].cell(r, 1).value for r in (2, 3)], ids)
-                headers = [c.value for c in wb[sheet][1]]
-                metric = 'Title 1 Pixel Width' if index == 0 else 'Size (Bytes)'
-                self.assertEqual(wb[sheet].cell(3, headers.index(metric) + 1).value, '581' if index == 0 else '204801')
-                self.assertIsNone(wb[sheet].cell(2, headers.index(metric) + 1).value)
+                self.assertEqual(wb.sheetnames, ['Checklist'] + [expected[item][0] for item in items])
+                for item in items:
+                    sheet, headers, row = expected[item]
+                    self.assertEqual([c.value for c in wb[sheet][1]], headers)
+                    wanted = list(row)
+                    if item == '18.3':
+                        wanted[2] = 901
+                    self.assertEqual([c.value for c in wb[sheet][2]], [str(v) for v in wanted])
             finally:
                 wb.close()
+        self.assertEqual(json.dumps(data, sort_keys=True), original)
+
+    def test_description_pixel_display_is_not_character_judgment(self):
+        self.full_exports()
+        self.write('meta_description_all.csv', ['Address', 'Indexability', 'Meta Description 1', 'Meta Description 1 Pixel Width'],
+                   [['short', 'Indexable', 'x' * 100, 1200], ['longer', 'Indexable', 'x' * 160, 200],
+                    ['long', 'Indexable', 'x' * 156, 901]])
+        data = self.audit()
+        check = self.check(data, '18.3')
+        self.assertEqual([r[0] for r in check['rows']], ['longer', 'long'])
+        self.assertEqual([r[2] for r in check['rows']], [160, 156])
+        self.assertEqual(check['pixel_widths'], [200, 901])
+
+    def test_missing_pixel_display_stays_blank_not_character_count(self):
+        self.full_exports()
+        self.write('meta_description_all.csv', ['Address', 'Indexability', 'Meta Description 1'],
+                   [['long', 'Indexable', 'x' * 156]])
+        data = self.audit()
+        check = self.check(data, '18.3')
+        self.assertEqual(check['pixel_widths'], [None])
+        self.assertEqual(check['result'], 'X')
+        self.assertFalse(check['gaps'])
+        self.assertTrue(check['display_gaps'])
+        data.update(site_name='Example', site_url='https://example.com/', audit_date='2026-10-15')
+        import report
+        import openpyxl
+        paths = report.build_report(data, self.path / 'missing-pixels')
+        wb = openpyxl.load_workbook(paths[1])
+        try:
+            self.assertEqual(wb['18.3 Descriptions - Too Long']['C1'].value, 'Pixel Width')
+            self.assertIsNone(wb['18.3 Descriptions - Too Long']['C2'].value)
+        finally:
+            wb.close()
 
     def test_title_four_detail_schemas_preserve_json(self):
         self.full_exports()

@@ -3,6 +3,7 @@ from io import BytesIO
 from pathlib import Path
 import datetime
 import re
+import math
 import unicodedata
 
 import openpyxl
@@ -14,11 +15,11 @@ from extract import ITEMS
 CHECK_HEADERS = ['Item No.', 'Item Name', 'Initial Check', 'Findings', 'Instruction']
 GROUPS = (
     ('17', 'page_titles', None),
-    ('18', 'meta_descriptions', '18. meta_description'),
-    ('19', 'headings', '19. Heading'),
-    ('20', 'images', '20. Image'),
+    ('18', 'meta_descriptions', None),
+    ('19', 'headings', None),
+    ('20', 'images', None),
 )
-TITLE_DETAILS = {
+DETAILS = {
     '17.1': ('17.1 Page title -Missing',
              [('Address', 'Address'), ('New Title', 'New Title'), ('Remarks', 'Remarks')]),
     '17.2': ('17.2 Page title - Duplicate',
@@ -29,6 +30,16 @@ TITLE_DETAILS = {
               ('Pixel Width ( max 580 pixels)', 'Title 1 Pixel Width'), ('Revised Title', 'Revised Title')]),
     '17.4': ('17.4 Page title - Multiple',
              [('Address', 'Address'), ('Title - 1', 'Title 1'), ('Title - 2', 'Title 2'), ('Instructions', 'Remarks')]),
+    '18.1': ('18. Descriptions - Missing', [('Address', 'Address'), ('Remarks', 'Instruction')]),
+    '18.2': ('18.2 Descriptions - Duplicate', [('Address', 'Address'), ('Meta Description', 'Meta Description 1')]),
+    '18.3': ('18.3 Descriptions - Too Long',
+             [('Address', 'Address'), ('Meta Description', 'Meta Description 1'), ('Pixel Width', 'Pixel Width')]),
+    '19.1': ('19.1 H1 - Missing', [('Address', 'Address'), ('Remarks', 'Instruction')]),
+    '19.2': ('19.2 H1 - Duplicate', [('Address', 'Address'), ('H1', 'H1-1'), ('Instructions', 'Remarks')]),
+    '19.3': ('19.3 H1 - Multiple', [('Address', 'Address'), ('H1-1', 'H1-1'), ('H1-2', 'H1-2')]),
+    '20.1': ('20.1 Image - Alt Text Missing',
+             [('Source', 'Source'), ('Destination', 'Destination'), ('Example Screenshots (If Applicable)', 'Screenshots (If have)')]),
+    '20.2': ('20.2 Image - Oversize', [('Source', 'Source'), ('Destination', 'Destination'), ('Size (Bytes)', 'Size (Bytes)')]),
 }
 
 
@@ -53,6 +64,12 @@ def validate(data):
             raise ValueError('Evidence gap cannot pass')
         if c['result'] == 'Human Check' and not c['gaps']:
             raise ValueError('Human Check requires an explicit evidence gap')
+        if c['id'] == '18.3' and 'pixel_widths' in c:
+            pixels = c['pixel_widths']
+            if not isinstance(pixels, list) or len(pixels) != len(c['rows']) or any(
+                    pixel is not None and (type(pixel) not in (int, float) or not math.isfinite(pixel) or pixel <= 0)
+                    for pixel in pixels):
+                raise ValueError('18.3 pixel_widths must align with rows and contain positive finite widths or null')
         for row in c['rows']:
             if len(row) > len(headers):
                 raise ValueError('Too many detail columns')
@@ -82,24 +99,16 @@ def build_report(data, output_dir):
                         key=lambda c: tuple(map(int, c['id'].split('.'))))
         expected = {'Checklist': [CHECK_HEADERS] +
                     [[c['id'], c['item_name'], c['result'], c['finding'], c['action']] for c in checks]}
-        if prefix == '17':
-            for c in checks:
-                if c['result'] == 'X' and c['id'] in TITLE_DETAILS:
-                    title_sheet, columns = TITLE_DETAILS[c['id']]
-                    rows = [[label for label, _ in columns]]
-                    for row in c['rows']:
-                        values = dict(zip(c['headers'], row))
-                        rows.append([values.get(source, '') for _, source in columns])
-                    expected[title_sheet] = rows
-        elif any(c['result'] == 'X' for c in checks):
-            headers = ['Item No.'] + list(dict.fromkeys(h for c in checks for h in c['headers']))
-            rows = [headers]
-            for c in checks:
-                if c['result'] == 'X':
-                    for row in c['rows']:
-                        values = dict(zip(c['headers'], row))
-                        rows.append([c['id']] + [values.get(h, '') for h in headers[1:]])
-            expected[sheet] = rows
+        for c in checks:
+            if c['result'] == 'X':
+                detail_sheet, columns = DETAILS[c['id']]
+                rows = [[label for label, _ in columns]]
+                for index, row in enumerate(c['rows']):
+                    values = dict(zip(c['headers'], row))
+                    if c['id'] == '18.3':
+                        values['Pixel Width'] = c.get('pixel_widths', [None] * len(c['rows']))[index]
+                    rows.append([values.get(source, '') for _, source in columns])
+                expected[detail_sheet] = rows
         staged.append((render_workbook(expected), expected))
     created = []
     try:
@@ -139,7 +148,7 @@ def render_workbook(expected):
             ws.freeze_panes = 'A2'
             ws.sheet_view.showGridLines = False
             widths = [12, 52, 20, 65, 60] if sheet == 'Checklist' else [
-                12 if h == 'Item No.' else 22 if h in ('Title 1 Pixel Width', 'Pixel Width ( max 580 pixels)',
+                12 if h == 'Item No.' else 22 if h in ('Title 1 Pixel Width', 'Pixel Width', 'Pixel Width ( max 580 pixels)',
                                                       'Character Count', 'Size (Bytes)') else 48 for h in rows[0]]
             for i, width in enumerate(widths, 1):
                 ws.column_dimensions[get_column_letter(i)].width = width

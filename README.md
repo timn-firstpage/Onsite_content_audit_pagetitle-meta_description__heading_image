@@ -2,7 +2,7 @@
 
 <p align="center"><img src="assets/onsite-audit-cover.png" alt="Onsite audit cover showing HTTPS security, website inspection, crawl connections, hostname redirects, and an audit report" width="640"></p>
 
-独立的 **`onsite-audit-content`** skill，检查 **17.1–20.2**。基于你已跑通的 Multica 提取逻辑整理，与 HTTPS、robots、sitemap 系列共用 SF session、saved crawl、配置和运行目录。当前版本 **1.1.2**。
+独立的 **`onsite-audit-content`** skill，检查 **17.1–20.2**。基于你已跑通的 Multica 提取逻辑整理，与 HTTPS、robots、sitemap 系列共用 SF session、saved crawl、配置和运行目录。当前版本 **1.2.0**。
 
 ## 高层工作流
 
@@ -18,7 +18,7 @@ flowchart TD
     F --> G["Content skill 校验数据并审核<br/>17 标题 · 18 描述 · 19 H1 · 20 图片"]
     G --> H["十二项判定<br/>√ 无问题 · X 有问题 · Human Check 证据不足"]
     H --> I["findings.json：全部十二项与问题行<br/>manifest.json：来源、阈值和证据记录"]
-    I --> J["生成四份 Excel：17／18／19／20<br/>各自 Checklist + 有 X 才建明细 tab<br/>17 按子项分 tab；18／19／20 按主题合并"]
+    I --> J["生成四份 Excel：17／18／19／20<br/>各自 Checklist + 按子项分开的 X 明细 tab<br/>18／19／20 名称与列对齐提供的模板"]
     J --> K["读回验证与版面检查<br/>交付报告，保留原始证据"]
 ```
 
@@ -125,15 +125,15 @@ target 清单通过 config 的 content.target_urls、content.target_urls_file �
 `<shared-run>/content/`：
 
 - `{site name}_page_titles_audit_{YYYY-MM-DD}.xlsx`：17.1–17.4 Checklist；各子项有 X 才创建下表对应独立 tab。
-- `{site name}_meta_descriptions_audit_{YYYY-MM-DD}.xlsx`：18.1–18.3 Checklist；有 X 才创建 `18. meta_description`。
-- `{site name}_headings_audit_{YYYY-MM-DD}.xlsx`：19.1–19.3 Checklist；有 X 才创建 `19. Heading`。
-- `{site name}_images_audit_{YYYY-MM-DD}.xlsx`：20.1–20.2 Checklist；有 X 才创建 `20. Image`。
+- `{site name}_meta_descriptions_audit_{YYYY-MM-DD}.xlsx`：18.1–18.3 Checklist；各子项有 X 才创建下表对应独立 tab。
+- `{site name}_headings_audit_{YYYY-MM-DD}.xlsx`：19.1–19.3 Checklist；各子项有 X 才创建下表对应独立 tab。
+- `{site name}_images_audit_{YYYY-MM-DD}.xlsx`：20.1–20.2 Checklist；各子项有 X 才创建下表对应独立 tab。
 - findings.json：十二项结果与全部确认问题行，供总流程复用。
 - manifest.json：来源、哈希、阈值、排除、计数和缺口。
 - raw/：可选完整 CSV 归档，默认开启。
 - run-status.json：四份 XLSX 全部读回验证成功后写 complete，`reports` 列出四个路径。
 
-默认成功输出 **4 份 Excel + 3 份 JSON + 可选 raw/ 原始 CSV 文件夹**；即使全通过也生成四份 Excel。每份 Checklist 沿用 Item No. / Item Name / Initial Check / Findings / Instruction，只列对应主题；四份合计十二项。结果 **√ / X / Human Check**；有确认问题且同时缺证据仍 X，明确缺口。17 按子项分 tab（最多四个），不用额外 Item No. 列；18／19／20 仍各自合并 X 问题行，增加 Item No. 区分子项。第 1 行表头、第 2 行数据。findings.json 仍保留全部十二项及原有 headers/rows/sheet 元数据；实际 Excel 列名按下表映射，JSON 不改。空问题数组及证据缺口不删除。[完整输出契约](references/output-contract.md)
+默认成功输出 **4 份 Excel + 3 份 JSON + 可选 raw/ 原始 CSV 文件夹**；即使全通过也生成四份 Excel。每份 Checklist 沿用 Item No. / Item Name / Initial Check / Findings / Instruction，只列对应主题；四份合计十二项。结果 **√ / X / Human Check**；有确认问题且同时缺证据仍 X，明确缺口。所有主题均按子项分 tab，不加额外 Item No. 列。第 1 行表头、第 2 行数据。findings.json 保留全部十二项及原有 headers/rows/sheet 元数据；18.3 额外保留行对应的 pixel_widths 和 display_gaps，字符数仍在原 rows 中。空问题数组及证据缺口不删除。[完整输出契约](references/output-contract.md)
 
 | 17 的问题明细 tab（仅对应子项为 X 才创建） | 列名 |
 | --- | --- |
@@ -141,6 +141,21 @@ target 清单通过 config 的 content.target_urls、content.target_urls_file �
 | 17.2 Page title - Duplicate | Address / Titles / New Title / Instructions (If have) |
 | 17.3 Page title -Too Long | Address / Title - 1 / Pixel Width ( max 580 pixels) / Revised Title |
 | 17.4 Page title - Multiple | Address / Title - 1 / Title - 2 / Instructions |
+
+18／19／20 按提供的 2026 模板逐页对齐（原模板不修改，也不是运行依赖）：
+
+| 问题明细 tab（仅对应子项为 X 才创建） | 列名 |
+| --- | --- |
+| 18. Descriptions - Missing | Address / Remarks |
+| 18.2 Descriptions - Duplicate | Address / Meta Description |
+| 18.3 Descriptions - Too Long | Address / Meta Description / Pixel Width |
+| 19.1 H1 - Missing | Address / Remarks |
+| 19.2 H1 - Duplicate | Address / H1 / Instructions |
+| 19.3 H1 - Multiple | Address / H1-1 / H1-2 |
+| 20.1 Image - Alt Text Missing | Source / Destination / Example Screenshots (If Applicable) |
+| 20.2 Image - Oversize | Source / Destination / Size (Bytes) |
+
+`18. Descriptions - Missing` 沿用模板原名，没有 `.1`。18.3 仍按 **155 字符**判定，Pixel Width 只显示 SF 原行的真实像素值；没提供像素时留空并注明，不把字符数冒充像素。模板里的旧 880px、100KB／仅非 WebP 说明不改变当前审核规则。
 
 不覆盖旧文件；同日更新使用新的 run 目录。日期按用户时区或明确 audit_date。所有客户资料在 ignored runs/，不要提交 GitHub。英文原始 checklist 问题保留，Findings/Instruction 支持 zh/en。
 
