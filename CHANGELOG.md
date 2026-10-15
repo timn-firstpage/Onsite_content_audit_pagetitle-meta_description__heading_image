@@ -1,5 +1,9 @@
 # Changes
 
+## 1.2.1 — 2026-10-15
+
+- Prefix each Excel filename with its full checklist range: 17.1-17.4, 18.1-18.3, 19.1-19.3 and 20.1-20.2. JSON filenames and workbook schemas are unchanged.
+
 ## 1.2.0 — 2026-10-15
 
 - Align individual 18/19/20 issue tab names and columns with the owner's 2026 template; preserve its literal 18. Descriptions - Missing name. Keep 17 as previously confirmed.

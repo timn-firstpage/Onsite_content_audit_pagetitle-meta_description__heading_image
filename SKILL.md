@@ -5,7 +5,7 @@ description: Use when auditing onsite checklist items 17.1–20.2 for page title
 
 # Onsite Content Audit
 
-Produce four Excel reports for **17.1–20.2 only**: `{site name}_page_titles_audit_{YYYY-MM-DD}.xlsx`, `{site name}_meta_descriptions_audit_{YYYY-MM-DD}.xlsx`, `{site name}_headings_audit_{YYYY-MM-DD}.xlsx`, `{site name}_images_audit_{YYYY-MM-DD}.xlsx`. Reuse the working Multica native-filter extraction logic with the owner's confirmed description rule: **>155 characters**, title **>580px**, image **>200 × 1024 bytes**. No canonical, HTTPS, robots, sitemap, pagination, PageSpeed or 20.3 checks.
+Produce four Excel reports for **17.1–20.2 only**: `17.1-17.4 {site name}_page_titles_audit_{YYYY-MM-DD}.xlsx`, `18.1-18.3 {site name}_meta_descriptions_audit_{YYYY-MM-DD}.xlsx`, `19.1-19.3 {site name}_headings_audit_{YYYY-MM-DD}.xlsx`, `20.1-20.2 {site name}_images_audit_{YYYY-MM-DD}.xlsx`. Reuse the working Multica native-filter extraction logic with the owner's confirmed description rule: **>155 characters**, title **>580px**, image **>200 × 1024 bytes**. No canonical, HTTPS, robots, sitemap, pagination, PageSpeed or 20.3 checks.
 
 ## Inputs and shared crawl
 

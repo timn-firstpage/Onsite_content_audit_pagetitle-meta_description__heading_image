@@ -4,12 +4,14 @@ Four files are always produced on a successful run, even when a theme has no iss
 
 | File | Checklist scope | X-only detail tab |
 | --- | --- | --- |
-| `{site name}_page_titles_audit_{YYYY-MM-DD}.xlsx` | 17.1–17.4 | Separate 17.1–17.4 tabs below |
-| `{site name}_meta_descriptions_audit_{YYYY-MM-DD}.xlsx` | 18.1–18.3 | Separate 18.1–18.3 tabs below |
-| `{site name}_headings_audit_{YYYY-MM-DD}.xlsx` | 19.1–19.3 | Separate 19.1–19.3 tabs below |
-| `{site name}_images_audit_{YYYY-MM-DD}.xlsx` | 20.1–20.2 | Separate 20.1–20.2 tabs below |
+| `17.1-17.4 {site name}_page_titles_audit_{YYYY-MM-DD}.xlsx` | 17.1–17.4 | Separate 17.1–17.4 tabs below |
+| `18.1-18.3 {site name}_meta_descriptions_audit_{YYYY-MM-DD}.xlsx` | 18.1–18.3 | Separate 18.1–18.3 tabs below |
+| `19.1-19.3 {site name}_headings_audit_{YYYY-MM-DD}.xlsx` | 19.1–19.3 | Separate 19.1–19.3 tabs below |
+| `20.1-20.2 {site name}_images_audit_{YYYY-MM-DD}.xlsx` | 20.1–20.2 | Separate 20.1–20.2 tabs below |
 
 Name from supplied site.name/--site-name, otherwise hostname without www. Date from --date/output.audit_date or output.timezone; never silently use another host's local date. Repeated audit uses a new run/content directory, never overwrites. The old combined content_audit workbook is no longer generated.
+
+Each Excel filename starts with its full checklist range followed by a space (17.1-17.4 / 18.1-18.3 / 19.1-19.3 / 20.1-20.2). The range describes all checks covered, regardless of which have issues. JSON filenames remain findings.json, manifest.json and run-status.json; reports paths automatically reflect the numbered filenames.
 
 Every workbook has Checklist first, followed by a separate detail tab for each of its X checks, in numeric order. Maximum sheet counts including Checklist: titles 5, descriptions 4, headings 4, images 3. √ and Human Check do not create detail tabs or rows. No X in a theme means that workbook contains Checklist only. Headers are **row 1, data from row 2**; this portable output retains its standalone header position, rather than copying the template's extra instruction rows.
 

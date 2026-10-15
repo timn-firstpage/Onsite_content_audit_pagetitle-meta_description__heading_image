@@ -2,7 +2,7 @@
 
 <p align="center"><img src="assets/onsite-audit-cover.png" alt="Onsite audit cover showing HTTPS security, website inspection, crawl connections, hostname redirects, and an audit report" width="640"></p>
 
-独立的 **`onsite-audit-content`** skill，检查 **17.1–20.2**。基于你已跑通的 Multica 提取逻辑整理，与 HTTPS、robots、sitemap 系列共用 SF session、saved crawl、配置和运行目录。当前版本 **1.2.0**。
+独立的 **`onsite-audit-content`** skill，检查 **17.1–20.2**。基于你已跑通的 Multica 提取逻辑整理，与 HTTPS、robots、sitemap 系列共用 SF session、saved crawl、配置和运行目录。当前版本 **1.2.1**。
 
 ## 高层工作流
 
@@ -124,10 +124,10 @@ target 清单通过 config 的 content.target_urls、content.target_urls_file �
 
 `<shared-run>/content/`：
 
-- `{site name}_page_titles_audit_{YYYY-MM-DD}.xlsx`：17.1–17.4 Checklist；各子项有 X 才创建下表对应独立 tab。
-- `{site name}_meta_descriptions_audit_{YYYY-MM-DD}.xlsx`：18.1–18.3 Checklist；各子项有 X 才创建下表对应独立 tab。
-- `{site name}_headings_audit_{YYYY-MM-DD}.xlsx`：19.1–19.3 Checklist；各子项有 X 才创建下表对应独立 tab。
-- `{site name}_images_audit_{YYYY-MM-DD}.xlsx`：20.1–20.2 Checklist；各子项有 X 才创建下表对应独立 tab。
+- `17.1-17.4 {site name}_page_titles_audit_{YYYY-MM-DD}.xlsx`：17.1–17.4 Checklist；各子项有 X 才创建下表对应独立 tab。
+- `18.1-18.3 {site name}_meta_descriptions_audit_{YYYY-MM-DD}.xlsx`：18.1–18.3 Checklist；各子项有 X 才创建下表对应独立 tab。
+- `19.1-19.3 {site name}_headings_audit_{YYYY-MM-DD}.xlsx`：19.1–19.3 Checklist；各子项有 X 才创建下表对应独立 tab。
+- `20.1-20.2 {site name}_images_audit_{YYYY-MM-DD}.xlsx`：20.1–20.2 Checklist；各子项有 X 才创建下表对应独立 tab。
 - findings.json：十二项结果与全部确认问题行，供总流程复用。
 - manifest.json：来源、哈希、阈值、排除、计数和缺口。
 - raw/：可选完整 CSV 归档，默认开启。

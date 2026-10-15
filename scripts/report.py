@@ -89,7 +89,12 @@ def build_report(data, output_dir):
     name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', data['site_name']).strip(' .')
     if not name or len(name.encode('utf-8')) > 180:
         raise ValueError('Provide a shorter portable site_name')
-    paths = [Path(output_dir) / f'{name}_{slug}_audit_{data["audit_date"]}.xlsx' for _, slug, _ in GROUPS]
+    paths = []
+    for prefix, slug, _ in GROUPS:
+        ids = sorted((item for item in ITEMS if item.split('.')[0] == prefix),
+                     key=lambda item: tuple(map(int, item.split('.'))))
+        item_range = f'{ids[0]}-{ids[-1]}'
+        paths.append(Path(output_dir) / f'{item_range} {name}_{slug}_audit_{data["audit_date"]}.xlsx')
     for path in paths:
         if path.exists():
             raise FileExistsError(f'Report already exists: {path}; choose a new run directory')

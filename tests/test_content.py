@@ -149,8 +149,8 @@ class ContentTests(unittest.TestCase):
         data.update(site_name='Example', site_url='https://example.com/', audit_date='2026-10-12')
         outputs = report.build_report(data, self.path / 'reports')
         self.assertEqual([p.name for p in outputs], [
-            'Example_page_titles_audit_2026-10-12.xlsx', 'Example_meta_descriptions_audit_2026-10-12.xlsx',
-            'Example_headings_audit_2026-10-12.xlsx', 'Example_images_audit_2026-10-12.xlsx'])
+            '17.1-17.4 Example_page_titles_audit_2026-10-12.xlsx', '18.1-18.3 Example_meta_descriptions_audit_2026-10-12.xlsx',
+            '19.1-19.3 Example_headings_audit_2026-10-12.xlsx', '20.1-20.2 Example_images_audit_2026-10-12.xlsx'])
         import openpyxl
         wb = openpyxl.load_workbook(outputs[0])
         self.addCleanup(wb.close)
@@ -332,7 +332,7 @@ class ContentTests(unittest.TestCase):
         data.update(site_name='Example', site_url='https://example.com/', audit_date='2026-10-13')
         destination = self.path / 'conflict'
         destination.mkdir()
-        existing = destination / 'Example_images_audit_2026-10-13.xlsx'
+        existing = destination / '20.1-20.2 Example_images_audit_2026-10-13.xlsx'
         existing.write_bytes(b'original')
         import report
         with self.assertRaises(FileExistsError):
