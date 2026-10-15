@@ -1,5 +1,11 @@
 # Changes
 
+## 1.3.0 — 2026-10-15
+
+- Review 17.2/18.2/19.2 native Duplicate candidates for Indexability=Indexable and recheck distinct-URL groups after excluding Non-Indexable rows.
+- Explain filtering, exclusions/reasons and group-review counts in Findings and additive duplicate_review metadata; unknown Indexability remains a gap.
+- Keep duplicate Indexable Chinese/English variants flagged, with a human language-version reminder. No automatic language exemption or Google canonical verification.
+
 ## 1.2.1 — 2026-10-15
 
 - Prefix each Excel filename with its full checklist range: 17.1-17.4, 18.1-18.3, 19.1-19.3 and 20.1-20.2. JSON filenames and workbook schemas are unchanged.

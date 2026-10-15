@@ -31,10 +31,10 @@ class ContentTests(unittest.TestCase):
         self.write('meta_description_all.csv', ['Address', 'Indexability', 'Meta Description 1', 'Meta Description 1 Pixel Width'],
                    [['https://example.com/a', 'Indexable', 'description', '880']])
         for name, headers in {
-            'page_titles_missing.csv': ['Address'], 'page_titles_duplicate.csv': ['Address', 'Title 1'],
+            'page_titles_missing.csv': ['Address'], 'page_titles_duplicate.csv': ['Address', 'Title 1', 'Indexability', 'Indexability Status'],
             'page_titles_multiple.csv': ['Address', 'Title 1', 'Title 2'],
-            'meta_description_missing.csv': ['Address'], 'meta_description_duplicate.csv': ['Address', 'Meta Description 1'],
-            'h1_missing.csv': ['Address'], 'h1_duplicate.csv': ['Address', 'H1-1', 'H1-2'],
+            'meta_description_missing.csv': ['Address'], 'meta_description_duplicate.csv': ['Address', 'Meta Description 1', 'Indexability', 'Indexability Status'],
+            'h1_missing.csv': ['Address'], 'h1_duplicate.csv': ['Address', 'H1-1', 'H1-2', 'Indexability', 'Indexability Status'],
             'h1_multiple.csv': ['Address', 'H1-1', 'H1-2'],
             'images_missing_alt_attribute_and_text_inlinks.csv': ['Source', 'Destination'],
         }.items():
@@ -64,10 +64,100 @@ class ContentTests(unittest.TestCase):
                    [['https://example.com/a', 'Indexable', 'Same', 100], ['https://example.com/b', 'Non-Indexable', 'Same', 100]])
         self.assertEqual(self.check(self.audit(), '17.2')['result'], '√')
 
+    def write_duplicates(self, records):
+        for name, field, h1 in (('page_titles_duplicate.csv', 'Title 1', False),
+                                ('meta_description_duplicate.csv', 'Meta Description 1', False),
+                                ('h1_duplicate.csv', 'H1-1', True)):
+            headers = ['Address', field] + (['H1-2'] if h1 else []) + ['Indexability', 'Indexability Status']
+            self.write(name, headers, [[url, value] + ([''] if h1 else []) + [state, reason]
+                                       for url, value, state, reason in records])
+
+    def test_duplicate_indexable_review_and_language_reminder(self):
+        self.full_exports()
+        self.write_duplicates([
+            ['https://example.com/original', 'Canonical group', 'Indexable', ''],
+            ['https://example.com/variant', 'Canonical group', 'Non-Indexable', 'Canonicalised'],
+            ['https://example.com/zh/a', 'Brand', 'Indexable', ''],
+            ['https://example.com/en/a', 'Brand', 'Indexable', ''],
+            ['https://example.com/private', 'Brand', 'Non-Indexable', 'noindex'],
+        ])
+        data = self.audit()
+        for item in ('17.2', '18.2', '19.2'):
+            check = self.check(data, item)
+            self.assertEqual(check['result'], 'X')
+            self.assertEqual({r[0] for r in check['rows']}, {'https://example.com/zh/a', 'https://example.com/en/a'})
+            review = check['duplicate_review']
+            self.assertEqual(review['native_rows'], 5)
+            self.assertEqual(review['indexable_rows'], 3)
+            self.assertEqual(review['excluded_non_indexable'], 2)
+            self.assertEqual(review['confirmed_rows'], 2)
+            self.assertEqual(review['excluded_reasons'], {'Canonicalised': 1, 'noindex': 1})
+            self.assertIn('Duplicate', check['finding'])
+            self.assertIn('Indexable', check['finding'])
+            self.assertIn('Canonicalised', check['finding'])
+            self.assertIn('中英文', check['finding'])
+            self.assertEqual(len(review['excluded_rows']), 2)
+        data.update(site_name='Example', site_url='https://example.com/', audit_date='2026-10-15')
+        import report
+        import openpyxl
+        outputs = report.build_report(data, self.path / 'duplicate-review')
+        for output, item in zip(outputs[:3], ('17.2', '18.2', '19.2')):
+            wb = openpyxl.load_workbook(output)
+            try:
+                self.assertEqual(wb['Checklist']['D3'].value, self.check(data, item)['finding'])
+                detail = wb[wb.sheetnames[-1]]
+                self.assertEqual({detail.cell(row, 1).value for row in (2, 3)},
+                                 {'https://example.com/zh/a', 'https://example.com/en/a'})
+            finally:
+                wb.close()
+
+    def test_canonical_pair_does_not_leave_singleton_duplicate(self):
+        self.full_exports()
+        self.write_duplicates([['https://example.com/a', 'Shared', 'Indexable', ''],
+                               ['https://example.com/b', 'Shared', 'Non-Indexable', 'Canonicalised']])
+        data = self.audit()
+        for item in ('17.2', '18.2', '19.2'):
+            check = self.check(data, item)
+            self.assertEqual(check['result'], '√')
+            self.assertEqual(check['rows'], [])
+            self.assertEqual(check['duplicate_review']['discarded_indexable_rows'], 1)
+            self.assertIn('排除', check['finding'])
+
+    def test_unknown_indexability_is_not_a_clean_duplicate_review(self):
+        self.full_exports()
+        self.write_duplicates([['a', 'Shared', 'Indexable', ''], ['b', 'Shared', '', '']])
+        data = self.audit()
+        for item in ('17.2', '18.2', '19.2'):
+            check = self.check(data, item)
+            self.assertEqual(check['result'], 'Human Check')
+            self.assertEqual(check['rows'], [])
+            self.assertEqual(check['duplicate_review']['unknown_indexability'], 1)
+        self.write('page_titles_duplicate.csv', ['Address', 'Title 1'], [['a', 'Shared'], ['b', 'Shared']])
+        self.assertEqual(self.check(self.audit(), '17.2')['result'], 'Human Check')
+
+    def test_confirmed_indexable_duplicate_survives_unknown_rows(self):
+        self.full_exports()
+        self.write_duplicates([['a', 'Shared', 'Indexable', ''], ['b', 'Shared', 'Indexable', ''],
+                               ['c', 'Shared', 'unknown', '']])
+        data = self.audit(language='en')
+        for item in ('17.2', '18.2', '19.2'):
+            check = self.check(data, item)
+            self.assertEqual(check['result'], 'X')
+            self.assertEqual(len(check['rows']), 2)
+            self.assertTrue(check['gaps'])
+            self.assertIn('Chinese/English', check['finding'])
+
+    def test_same_url_repeated_is_not_two_indexable_pages(self):
+        self.full_exports()
+        self.write_duplicates([['a', 'Shared', 'Indexable', ''], ['a', 'Shared', 'Indexable', '']])
+        for item in ('17.2', '18.2', '19.2'):
+            self.assertEqual(self.check(self.audit(), item)['result'], '√')
+
     def test_h1_drops_only_pure_same_page_collision(self):
         self.full_exports()
-        self.write('h1_duplicate.csv', ['Address', 'H1-1', 'H1-2'],
-                   [['a', 'Unique', 'Unique'], ['b', 'Shared', 'Shared'], ['c', 'Shared', 'Other']])
+        self.write('h1_duplicate.csv', ['Address', 'H1-1', 'H1-2', 'Indexability', 'Indexability Status'],
+                   [['a', 'Unique', 'Unique', 'Indexable', ''], ['b', 'Shared', 'Shared', 'Indexable', ''],
+                    ['c', 'Shared', 'Other', 'Indexable', '']])
         self.assertEqual(self.check(self.audit(), '19.2')['row_count'], 2)
 
     def test_thresholds_indexability_and_description_characters(self):
@@ -143,7 +233,8 @@ class ContentTests(unittest.TestCase):
 
     def test_report_exact_tabs_literal_values_and_no_overwrite(self):
         self.full_exports()
-        self.write('page_titles_duplicate.csv', ['Address', 'Title 1'], [['a', '=1+1'], ['b', '=1+1']])
+        self.write('page_titles_duplicate.csv', ['Address', 'Title 1', 'Indexability', 'Indexability Status'],
+                   [['a', '=1+1', 'Indexable', ''], ['b', '=1+1', 'Indexable', '']])
         data = self.audit()
         import report
         data.update(site_name='Example', site_url='https://example.com/', audit_date='2026-10-12')
@@ -292,7 +383,8 @@ class ContentTests(unittest.TestCase):
     def test_title_four_detail_schemas_preserve_json(self):
         self.full_exports()
         self.write('page_titles_missing.csv', ['Address'], [['missing']])
-        self.write('page_titles_duplicate.csv', ['Address', 'Title 1'], [['duplicate', 'Same']])
+        self.write('page_titles_duplicate.csv', ['Address', 'Title 1', 'Indexability', 'Indexability Status'],
+                   [['duplicate', 'Same', 'Indexable', ''], ['duplicate-2', 'Same', 'Indexable', '']])
         self.write('page_titles_multiple.csv', ['Address', 'Title 1', 'Title 2'], [['multiple', 'First', 'Second']])
         self.write('page_titles_all.csv', ['Address', 'Indexability', 'Title 1', 'Title 1 Pixel Width'],
                    [['long', 'Indexable', 'Long', 581]])
@@ -319,7 +411,8 @@ class ContentTests(unittest.TestCase):
             }
             self.assertEqual(wb.sheetnames, ['Checklist'] + list(expected))
             for sheet, rows in expected.items():
-                self.assertEqual([[c.value for c in row] for row in wb[sheet]], list(rows))
+                self.assertEqual([[c.value for c in row] for row in wb[sheet]][:2], list(rows))
+            self.assertEqual(wb['17.2 Page title - Duplicate']['A3'].value, 'duplicate-2')
             self.assertEqual(wb['Checklist']['C5'].value, 'X')
         finally:
             wb.close()

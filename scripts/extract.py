@@ -80,6 +80,66 @@ def grouped(rows, field):
     return sorted(rows, key=lambda r: (-counts[r[field].strip()], r[field].strip(), r['Address']))
 
 
+def review_duplicates(rows, field, source, available=True):
+    """Recheck only native Duplicate candidates; never derive candidates from All."""
+    eligible, excluded, unknown, invalid, gaps = [], [], [], [], []
+    for row in rows:
+        state = row.get('Indexability', '').strip().casefold()
+        if state == 'non-indexable':
+            excluded.append({'Address': row.get('Address', ''), 'Indexability': row.get('Indexability', ''),
+                             'Indexability Status': row.get('Indexability Status', '').strip() or 'Unspecified'})
+        elif state != 'indexable':
+            unknown.append({'Address': row.get('Address', ''), 'Indexability': row.get('Indexability', ''),
+                            'Indexability Status': row.get('Indexability Status', '')})
+            gaps.append(f'{source}: missing/unknown Indexability for {row.get("Address", "")}.')
+        elif not row.get('Address', '').strip() or not row.get(field, '').strip():
+            invalid.append(row.get('Address', ''))
+            gaps.append(f'{source}: Indexable candidate has blank Address/{field}.')
+        else:
+            eligible.append(row)
+    def key(row):
+        value = row[field].strip()
+        return value.casefold() if field == 'H1-1' else value
+    urls = collections.defaultdict(set)
+    for row in eligible:
+        urls[key(row)].add(row['Address'].strip())
+    confirmed = [row for row in eligible if len(urls[key(row)]) >= 2]
+    review = {'native_rows': len(rows) if available else None, 'indexable_rows': len(eligible),
+              'excluded_non_indexable': len(excluded), 'excluded_reasons': dict(collections.Counter(
+                  row['Indexability Status'] for row in excluded)),
+              'excluded_rows': excluded, 'unknown_indexability': len(unknown), 'unknown_rows': unknown,
+              'invalid_rows': len(invalid), 'discarded_indexable_rows': len(eligible) - len(confirmed),
+              'confirmed_rows': len(confirmed), 'confirmed_groups': sum(len(group) >= 2 for group in urls.values()),
+              'scope': 'native Duplicate candidates -> Indexable -> at least two distinct URLs per value',
+              'language_variants_excluded': False}
+    return grouped(confirmed, field), gaps, review
+
+
+def duplicate_finding(review, source, language, has_gaps):
+    labels = {'title_duplicate': 'Page Titles', 'description_duplicate': 'Meta Description', 'h1_duplicate': 'H1'}
+    count = review['native_rows'] if review['native_rows'] is not None else ('未知' if language == 'zh' else 'unavailable')
+    reasons = ', '.join(f'{reason}: {n}' for reason, n in review['excluded_reasons'].items())
+    if language == 'zh':
+        note = (f'SF {labels[source]} → Duplicate → Indexable：原始 {count} 条，'
+                f'保留 Indexable {review["indexable_rows"]} 条，排除 Non-Indexable {review["excluded_non_indexable"]} 条'
+                f'{"（" + reasons + "）" if reasons else ""}；'
+                f'组内复核剔除 {review["discarded_indexable_rows"]} 条，最终 {review["confirmed_rows"]} 条重复问题。')
+        if has_gaps:
+            note += f' Indexability 未确认 {review["unknown_indexability"]} 条；证据缺口需补查。'
+        if review['confirmed_rows']:
+            note += ' 未自动排除中英文站点；请核实是否为语言版本，当前仍标记重复。'
+    else:
+        note = (f'SF {labels[source]} > Duplicate > Indexable: {count} native rows; '
+                f'{review["indexable_rows"]} Indexable retained; {review["excluded_non_indexable"]} Non-Indexable excluded'
+                f'{" (" + reasons + ")" if reasons else ""}; '
+                f'{review["discarded_indexable_rows"]} rows removed by group review; {review["confirmed_rows"]} duplicate issue rows.')
+        if has_gaps:
+            note += f' {review["unknown_indexability"]} unknown Indexability rows; supply missing evidence.'
+        if review['confirmed_rows']:
+            note += ' Chinese/English site variants are not automatically excluded; verify language versions; duplicates remain flagged.'
+    return note
+
+
 def audit(exports_dir, targets=None, title_px=580, description_chars=155, image_kib=200, language='zh'):
     directory = Path(exports_dir)
     if not directory.is_dir():
@@ -141,18 +201,21 @@ def audit(exports_dir, targets=None, title_px=580, description_chars=155, image_
         ('19.3', 'h1_multiple', ['Address', 'H1-1', 'H1-2'])):
         rows, gaps = clean(source, fields)
         note = ''
+        duplicate_review = None
         if item in ('17.1', '18.1'):
             rows = [r for r in rows if r['Address'].strip() not in targets]
             if not targets:
                 note = '未提供明确 target pages 清单，未应用排除。' if language == 'zh' else 'No explicit target-page list; no exclusions applied.'
-        if item == '19.2':
-            counts = collections.Counter(r['H1-1'].strip().lower() for r in rows)
-            rows = [r for r in rows if r['H1-1'].strip() != r.get('H1-2', '').strip() or counts[r['H1-1'].strip().lower()] > 1]
         if item in ('17.2', '18.2', '19.2'):
-            rows = grouped(rows, fields[1])
+            rows, gaps, duplicate_review = review_duplicates(exports[source], fields[1], source,
+                                                             records[source]['state'] == 'available')
+            note = duplicate_finding(duplicate_review, source, language, bool(gaps or records[source]['gaps']))
         if item == '19.1':
             note = '本项检查 H1 缺失；关键词优化由人工判断，多个 H1 见 19.3。' if language == 'zh' else 'Presence only; keyword relevance requires human review. Multiple H1s: 19.3.'
         add(item, [[r[f] for f in fields] for r in rows], [source], gaps, note)
+        if duplicate_review is not None:
+            checks[-1]['duplicate_review'] = duplicate_review
+            checks[-1]['finding'] = note
 
     for item, source, text_field, metric_field, threshold in (
         ('17.3', 'title_all', 'Title 1', 'Title 1 Pixel Width', title_px),

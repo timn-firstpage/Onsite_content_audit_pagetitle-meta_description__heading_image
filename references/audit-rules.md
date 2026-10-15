@@ -5,17 +5,27 @@ The item questions and tab names in scripts/extract.py are fixed to the owner's 
 | Item | Decision and source |
 | --- | --- |
 | 17.1 | SF Page Titles:Missing, minus exact explicitly identified target URLs. |
-| 17.2 | SF Page Titles:Duplicate, grouping identical Title 1 values, largest groups first. Do not recreate duplicates from All. |
+| 17.2 | SF Page Titles:Duplicate → Indexable → retain groups with at least two distinct URLs sharing Title 1. Largest groups first; never derive candidates from All. |
 | 17.3 | Page Titles:All, Indexability=Indexable, Title 1 Pixel Width >580. Descending width. |
 | 17.4 | SF Page Titles:Multiple. |
 | 18.1 | SF Meta Description:Missing, minus the same exact target URLs. |
-| 18.2 | SF Meta Description:Duplicate; group identical Meta Description 1, largest groups first. |
+| 18.2 | SF Meta Description:Duplicate → Indexable → retain groups with at least two distinct URLs sharing Meta Description 1, largest groups first. |
 | 18.3 | Meta Description:All, Indexability=Indexable, length of Meta Description 1 >155 Unicode code points. Exactly 155 passes. Use exported text, no trimming, byte count, pixel estimate or markup parsing. 880px from the old Multica version is retired. |
 | 19.1 | SF H1:Missing. This verifies missing H1 only; keyword optimization is human judgment and multiple H1 is 19.3. Keep the original question and explain that boundary. |
-| 19.2 | Start from SF H1:Duplicate. Remove a same-page H1-1==H1-2 row only if that H1-1 occurs once within the native duplicate set. A row may repeat H1 locally AND share it across pages: retain it. |
+| 19.2 | SF H1:Duplicate → Indexable → retain H1-1 groups with at least two distinct URLs. Pure same-page repetitions are not cross-page duplication; check multiple H1 in 19.3. |
 | 19.3 | SF H1:Multiple. |
 | 20.1 | Images Missing Alt Attribute & Text Inlinks. Includes alt=""; inspect decorative images before prescribing fixes. One image on ten pages can yield ten rows. |
 | 20.2 | All Image Inlinks Size (Bytes), fallback Size, >204800 bytes. Include external CDN images directly from inlinks; never inner-join Images:All or use SF's config-dependent Over X kB filter. Largest sizes first. |
+
+## Duplicate review and Findings (17.2 / 18.2 / 19.2)
+
+Follow the matching SF tab (Page Titles / Meta Description / H1), select its native Duplicate filter, then filter Indexability=Indexable. The owner's current policy excludes all known Non-Indexable candidates, including Canonicalised/noindex/etc.; Indexability Status supplies the recorded reason, not an additional eligibility condition. Missing status reasons are recorded as Unspecified. Do not treat an SF Canonicalised label as proof that Google selected that canonical or that canonical configuration is correct.
+
+Recheck groups only inside these native candidates after filtering. A group needs at least two distinct exact URL strings (outer whitespace removed). Repeated rows for one URL do not count as two pages; an Indexable original left alone after its Non-Indexable variants are excluded is not a duplicate issue. Title/description group values use outer-whitespace trimming with exact case; H1-1 grouping is case-insensitive, preserving the previous H1 matching convention. Keep all confirmed rows in qualifying groups. Do not infer cross-page matches from All, infer missing language classifications or exclude target pages here.
+
+Nonempty Duplicate exports need usable Indexability per candidate. Unknown/missing values and blank eligible identities/content leave evidence gaps and are not confirmed issue rows. With no confirmed groups this is Human Check; known groups remain X alongside gaps. A valid header-only issue export still means zero native candidates; missing/invalid exports remain Human Check.
+
+Findings must state the named SF tab, Duplicate → Indexable route, native row count (unknown if export unavailable), Indexable row count, excluded Non-Indexable count/reasons, group-review removals and final confirmed row count. Include unknown-evidence limitations. On X add a reminder that Chinese/English site versions were not automatically excluded and require human review; do not claim language detection or automatically waive multilingual duplicates. If both language versions are Indexable and share the checked value, they remain flagged. The check's duplicate_review metadata records counts plus excluded/unknown URL records; raw exports remain intact. These are sample/crawl-based decisions, not Google index verification.
 
 ## Targets and evidence
 

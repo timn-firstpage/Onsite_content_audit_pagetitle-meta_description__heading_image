@@ -21,6 +21,7 @@ Produce four Excel reports for **17.1–20.2 only**: `17.1-17.4 {site name}_page
 
 1. Read [audit rules](references/audit-rules.md) and [CSV contract](references/exports.md). Only request missing reports/fields. Native issue reports may validly contain just headers; absent/invalid reports remain unknown, not clean.
 2. Archive/reuse the matching complete exports. Ensure source host/date/scope match the intended run, including partial/JS/image capture context. Keep full files local; show at most five examples in chat.
+   For 17.2/18.2/19.2 use the matching Page Titles/Meta Description/H1 tab's Duplicate filter, retain Indexability and Indexability Status, then review Indexable candidates only. Exclude all known Non-Indexable rows and record reasons, including Canonicalised. Recheck groups for at least two distinct URLs after filtering. Findings must disclose the route, original/eligible/excluded/final counts, reasons and gaps. Chinese/English variants remain flagged when both are Indexable and share the checked value; remind the reader to review language versions, never auto-exclude them. Missing Indexability is unknown, not a pass. See audit-rules.md for group matching and traceability.
 3. Run the deterministic local command, substituting actual paths:
 
    ```bash
